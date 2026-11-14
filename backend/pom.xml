@@ -37,6 +37,8 @@
     <springdoc.version>2.8.17</springdoc.version>
     <archunit.version>1.4.2</archunit.version>
     <jjwt.version>0.12.6</jjwt.version>
+    <json-schema.version>1.5.8</json-schema.version>
+    <neo4j-driver.version>5.26.3</neo4j-driver.version>
     <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
   </properties>
@@ -100,6 +102,16 @@
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-jackson</artifactId>
         <version>${jjwt.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.networknt</groupId>
+        <artifactId>json-schema-validator</artifactId>
+        <version>${json-schema.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.neo4j.driver</groupId>
+        <artifactId>neo4j-java-driver</artifactId>
+        <version>${neo4j-driver.version}</version>
       </dependency>
 
       <dependency>

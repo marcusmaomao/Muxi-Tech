@@ -31,12 +31,17 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private AuditRecorder auditRecorder;
+    @Mock private cn.muxicloud.mop.system.service.CaptchaService captchaService;
+    @Mock private cn.muxicloud.mop.system.service.RefreshTokenService refreshTokenService;
+    @Mock private cn.muxicloud.mop.system.service.AccessService accessService;
 
     private AuthService service;
 
     @BeforeEach
     void setUp() {
-        service = new AuthService(userMapper, tenantMapper, loginLogMapper, passwordEncoder, jwtService, auditRecorder);
+        service = new AuthService(
+                userMapper, tenantMapper, loginLogMapper, passwordEncoder, jwtService, auditRecorder,
+                captchaService, refreshTokenService, accessService);
     }
 
     @Test
@@ -45,11 +50,13 @@ class AuthServiceTest {
         when(passwordEncoder.matches("secret1", "hash")).thenReturn(true);
         when(jwtService.issue(any())).thenReturn("token-1");
         when(jwtService.ttlSeconds()).thenReturn(7200L);
+        when(refreshTokenService.issue(any())).thenReturn("refresh-1");
         when(tenantMapper.selectById(7L)).thenReturn(tenant());
 
-        LoginResponse response = service.login("admin", "secret1", "127.0.0.1");
+        LoginResponse response = service.login("admin", "secret1", "cap", "ABCD", "127.0.0.1");
 
         assertThat(response.accessToken()).isEqualTo("token-1");
+        assertThat(response.refreshToken()).isEqualTo("refresh-1");
         assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.user().displayName()).isEqualTo("平台管理员");
         assertThat(response.user().tenantName()).isEqualTo("演示租户");
@@ -61,7 +68,7 @@ class AuthServiceTest {
     void unknownUserIsRejected() {
         when(userMapper.selectOne(any())).thenReturn(null);
 
-        assertThatThrownBy(() -> service.login("admin", "secret1", "127.0.0.1"))
+        assertThatThrownBy(() -> service.login("admin", "secret1", "cap", "ABCD", "127.0.0.1"))
                 .isInstanceOf(MopException.class)
                 .hasMessage("用户名或密码错误");
         verify(jwtService, never()).issue(any());
@@ -73,7 +80,7 @@ class AuthServiceTest {
         when(userMapper.selectOne(any())).thenReturn(user());
         when(passwordEncoder.matches("secret1", "hash")).thenReturn(false);
 
-        assertThatThrownBy(() -> service.login("admin", "secret1", null))
+        assertThatThrownBy(() -> service.login("admin", "secret1", "cap", "ABCD", null))
                 .isInstanceOf(MopException.class);
         verify(jwtService, never()).issue(any());
     }

@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class JwtProperties {
     private String secret = "";
     private long ttlSeconds = 7200;
+    private long refreshTtlSeconds = 604800;
 
     public String getSecret() {
         return secret;
@@ -21,5 +22,13 @@ public class JwtProperties {
 
     public void setTtlSeconds(long ttlSeconds) {
         this.ttlSeconds = ttlSeconds;
+    }
+
+    public long getRefreshTtlSeconds() {
+        return refreshTtlSeconds;
+    }
+
+    public void setRefreshTtlSeconds(long refreshTtlSeconds) {
+        this.refreshTtlSeconds = refreshTtlSeconds;
     }
 }

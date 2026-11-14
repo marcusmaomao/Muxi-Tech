@@ -9,6 +9,7 @@ import cn.muxicloud.mop.system.mapper.RoleMapper;
 import cn.muxicloud.mop.system.mapper.TenantMapper;
 import cn.muxicloud.mop.system.mapper.UserMapper;
 import cn.muxicloud.mop.system.mapper.UserRoleMapper;
+import cn.muxicloud.mop.tenant.TenantIgnore;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import org.slf4j.Logger;
@@ -16,11 +17,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Order(0)
 @EnableConfigurationProperties(DemoSeedProperties.class)
 public class DemoSeedService implements ApplicationRunner {
     static final String ADMIN_ROLE = "PLATFORM_ADMIN";
@@ -58,11 +61,16 @@ public class DemoSeedService implements ApplicationRunner {
         if (properties.getAdminPassword() == null || properties.getAdminPassword().isBlank()) {
             throw new IllegalStateException("已开启 MOP_DEMO_SEED，但 MOP_DEMO_ADMIN_PASSWORD 为空");
         }
-        TenantEntity tenant = ensureTenant();
-        RoleEntity role = ensureRole(tenant.getId());
-        UserEntity user = ensureUser(tenant.getId());
-        ensureLink(tenant.getId(), user.getId(), role.getId());
-        log.info("演示账号已就绪 username={} tenant={}", user.getUsername(), tenant.getCode());
+        TenantIgnore.ignore();
+        try {
+            TenantEntity tenant = ensureTenant();
+            RoleEntity role = ensureRole(tenant.getId());
+            UserEntity user = ensureUser(tenant.getId());
+            ensureLink(tenant.getId(), user.getId(), role.getId());
+            log.info("演示账号已就绪 username={} tenant={}", user.getUsername(), tenant.getCode());
+        } finally {
+            TenantIgnore.use();
+        }
     }
 
     private TenantEntity ensureTenant() {

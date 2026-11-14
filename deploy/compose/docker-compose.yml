@@ -89,6 +89,7 @@ services:
       MOP_DEMO_SEED: ${MOP_DEMO_SEED}
       MOP_DEMO_ADMIN_USERNAME: ${MOP_DEMO_ADMIN_USERNAME}
       MOP_DEMO_ADMIN_PASSWORD: ${MOP_DEMO_ADMIN_PASSWORD}
+      MOP_CAPTCHA_EXPOSE: ${MOP_CAPTCHA_EXPOSE:-false}
       TZ: Asia/Shanghai
     depends_on:
       mysql:

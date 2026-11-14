@@ -4,7 +4,9 @@ export const SESSION_KEY = "mop.session";
 
 export interface StoredSession {
   accessToken: string;
+  refreshToken: string;
   user: UserProfile;
+  permissions: string[];
 }
 
 export function readSession(): StoredSession | null {
@@ -17,6 +19,7 @@ export function readSession(): StoredSession | null {
     if (!parsed.accessToken || !parsed.user) {
       return null;
     }
+    parsed.permissions = parsed.permissions ?? [];
     return parsed;
   } catch {
     return null;

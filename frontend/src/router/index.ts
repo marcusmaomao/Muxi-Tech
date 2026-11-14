@@ -3,6 +3,9 @@ import { useAuthStore } from "@/stores/auth";
 import AppLayout from "@/layouts/AppLayout.vue";
 import LoginView from "@/views/login/LoginView.vue";
 import WorkbenchView from "@/views/workbench/WorkbenchView.vue";
+import UsersView from "@/views/system/UsersView.vue";
+import SimpleListView from "@/views/system/SimpleListView.vue";
+import LogsView from "@/views/system/LogsView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,6 +17,15 @@ const router = createRouter({
       children: [
         { path: "", redirect: { name: "workbench" } },
         { path: "workbench", name: "workbench", component: WorkbenchView },
+        { path: "system/users", name: "users", component: UsersView },
+        { path: "system/roles", component: SimpleListView, props: { kind: "roles" } },
+        { path: "system/menus", component: SimpleListView, props: { kind: "menus" } },
+        { path: "system/depts", component: SimpleListView, props: { kind: "depts" } },
+        { path: "system/posts", component: SimpleListView, props: { kind: "posts" } },
+        { path: "system/dicts", component: SimpleListView, props: { kind: "dicts" } },
+        { path: "system/configs", component: SimpleListView, props: { kind: "configs" } },
+        { path: "system/notices", component: SimpleListView, props: { kind: "notices" } },
+        { path: "system/logs", component: LogsView },
       ],
     },
   ],

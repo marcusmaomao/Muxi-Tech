@@ -24,3 +24,15 @@ test("wrong password stays on the login page", async ({ page }) => {
   await expect(page.getByTestId("login-error")).toContainText("用户名或密码错误");
   await expect(page).toHaveURL(/\/login/);
 });
+
+test("admin opens user management", async ({ page }) => {
+  await new LoginPage(page).signIn(username, password);
+  await page.getByRole("link", { name: "系统" }).click();
+  await expect(page.getByTestId("users-page")).toBeVisible();
+  await expect(page.getByTestId("user-table")).toContainText("admin");
+  await page.getByTestId("new-username").locator("input").fill("clerk");
+  await page.getByTestId("new-display-name").locator("input").fill("文员");
+  await page.getByTestId("create-user").click();
+  await expect(page.getByTestId("user-table")).toContainText("clerk");
+  await page.screenshot({ path: "test-results/users.png", fullPage: true });
+});

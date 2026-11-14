@@ -28,13 +28,14 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
     @Mock private AuthService authService;
+    @Mock private cn.muxicloud.mop.system.service.CaptchaService captchaService;
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
-        mvc = MockMvcBuilders.standaloneSetup(new AuthController(authService))
+        mvc = MockMvcBuilders.standaloneSetup(new AuthController(authService, captchaService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
@@ -43,29 +44,30 @@ class AuthControllerTest {
 
     @Test
     void loginReturnsEnvelope() throws Exception {
-        when(authService.login(eq("admin"), eq("secret1"), any())).thenReturn(new LoginResponse(
+        when(authService.login(eq("admin"), eq("secret1"), eq("cap"), eq("ABCD"), any())).thenReturn(new LoginResponse(
                 "token-1",
+                "refresh-1",
                 "Bearer",
                 7200,
                 new UserProfile("uid", "admin", "平台管理员", 7L, "演示租户")));
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"secret1\"}"))
+                        .content("{\"username\":\"admin\",\"password\":\"secret1\",\"captchaId\":\"cap\",\"captchaCode\":\"ABCD\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("OK"))
                 .andExpect(jsonPath("$.data.accessToken").value("token-1"))
                 .andExpect(jsonPath("$.data.user.displayName").value("平台管理员"));
-        verify(authService).login(eq("admin"), eq("secret1"), any());
+        verify(authService).login(eq("admin"), eq("secret1"), eq("cap"), eq("ABCD"), any());
     }
 
     @Test
     void badCredentialsUseErrorCode() throws Exception {
-        when(authService.login(any(), any(), any())).thenThrow(new MopException(ErrorCode.BAD_CREDENTIALS));
+        when(authService.login(any(), any(), any(), any(), any())).thenThrow(new MopException(ErrorCode.BAD_CREDENTIALS));
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"secret1\"}"))
+                        .content("{\"username\":\"admin\",\"password\":\"secret1\",\"captchaId\":\"cap\",\"captchaCode\":\"ABCD\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("MOP-1002"));
     }
@@ -74,7 +76,7 @@ class AuthControllerTest {
     void blankUsernameIsRejected() throws Exception {
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"\",\"password\":\"secret1\"}"))
+                        .content("{\"username\":\"\",\"password\":\"secret1\",\"captchaId\":\"cap\",\"captchaCode\":\"ABCD\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MOP-4000"));
     }

@@ -34,9 +34,7 @@ async function onLogout() {
         <button class="nav" type="button" disabled>
           {{ t("nav.runtime") }} <span class="soon">{{ t("nav.soon") }}</span>
         </button>
-        <button class="nav" type="button" disabled>
-          {{ t("nav.system") }} <span class="soon">{{ t("nav.soon") }}</span>
-        </button>
+        <router-link v-if="auth.can('system:user:list')" to="/system/users">{{ t("nav.system") }}</router-link>
       </nav>
     </aside>
     <div class="main">

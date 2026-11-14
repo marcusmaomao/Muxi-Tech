@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "required": ["displayName", "apiName", "sourceUid", "targetUid"],
+  "properties": {
+    "displayName": { "type": "string", "minLength": 1 },
+    "apiName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+    "sourceUid": { "type": "string", "minLength": 26, "maxLength": 26 },
+    "targetUid": { "type": "string", "minLength": 26, "maxLength": 26 }
+  },
+  "additionalProperties": true
+}
