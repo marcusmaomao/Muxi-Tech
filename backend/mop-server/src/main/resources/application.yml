@@ -39,6 +39,9 @@ mop:
   jwt:
     secret: ${MOP_JWT_SECRET:}
     ttl-seconds: ${MOP_JWT_TTL_SECONDS:7200}
+    refresh-ttl-seconds: ${MOP_JWT_REFRESH_TTL_SECONDS:604800}
+  captcha:
+    expose: ${MOP_CAPTCHA_EXPOSE:false}
   demo:
     seed: ${MOP_DEMO_SEED:false}
     admin-username: ${MOP_DEMO_ADMIN_USERNAME:admin}

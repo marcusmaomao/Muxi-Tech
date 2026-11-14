@@ -2,13 +2,16 @@ package cn.muxicloud.mop.system.entity;
 
 import cn.muxicloud.mop.mybatis.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @TableName("sys_user")
 public class UserEntity extends BaseEntity {
     private String uid;
     private String username;
+    @JsonIgnore
     private String passwordHash;
     private String displayName;
+    private Long deptId;
     private Integer status;
 
     public String getUid() {
@@ -41,6 +44,14 @@ public class UserEntity extends BaseEntity {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    public Long getDeptId() {
+        return deptId;
+    }
+
+    public void setDeptId(Long deptId) {
+        this.deptId = deptId;
     }
 
     public Integer getStatus() {

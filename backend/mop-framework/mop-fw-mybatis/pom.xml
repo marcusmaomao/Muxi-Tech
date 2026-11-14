@@ -17,6 +17,10 @@
       <artifactId>mop-common</artifactId>
     </dependency>
     <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-tenant</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.baomidou</groupId>
       <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
     </dependency>

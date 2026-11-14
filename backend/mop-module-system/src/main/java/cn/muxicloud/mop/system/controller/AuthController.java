@@ -3,8 +3,10 @@ package cn.muxicloud.mop.system.controller;
 import cn.muxicloud.mop.security.AuthenticatedUser;
 import cn.muxicloud.mop.system.dto.LoginRequest;
 import cn.muxicloud.mop.system.dto.LoginResponse;
-import cn.muxicloud.mop.system.dto.UserProfile;
+import cn.muxicloud.mop.system.dto.RefreshRequest;
+import cn.muxicloud.mop.system.dto.SessionProfile;
 import cn.muxicloud.mop.system.service.AuthService;
+import cn.muxicloud.mop.system.service.CaptchaService;
 import cn.muxicloud.mop.web.api.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -19,23 +21,37 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
     private final AuthService authService;
+    private final CaptchaService captchaService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, CaptchaService captchaService) {
         this.authService = authService;
+        this.captchaService = captchaService;
+    }
+
+    @GetMapping("/captcha")
+    public ApiResponse<CaptchaService.CaptchaChallenge> captcha() {
+        return ApiResponse.ok(captchaService.create());
     }
 
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
-        return ApiResponse.ok(authService.login(request.username(), request.password(), clientIp(httpRequest)));
+        return ApiResponse.ok(authService.login(
+                request.username(), request.password(), request.captchaId(), request.captchaCode(), clientIp(httpRequest)));
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ApiResponse.ok(authService.refresh(request.refreshToken()));
     }
 
     @GetMapping("/me")
-    public ApiResponse<UserProfile> me(Authentication authentication) {
+    public ApiResponse<SessionProfile> me(Authentication authentication) {
         return ApiResponse.ok(authService.me((AuthenticatedUser) authentication.getPrincipal()));
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout() {
+    public ApiResponse<Void> logout(@RequestBody(required = false) RefreshRequest request) {
+        authService.logout(request == null ? null : request.refreshToken());
         return ApiResponse.ok(null);
     }
 

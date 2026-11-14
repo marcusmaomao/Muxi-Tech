@@ -6,6 +6,7 @@ export default {
     subtitle: "Keep objects, constraints, and actions on one workbench.",
     username: "Username",
     password: "Password",
+    captcha: "Captcha",
     submit: "Sign in",
     hint: "The demo account is created from environment variables. See the deployment notes.",
   },

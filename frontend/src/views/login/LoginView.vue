@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { fetchCaptcha } from "@/api/auth";
 import { ApiError } from "@/api/http";
 import { useAuthStore } from "@/stores/auth";
 
@@ -10,8 +11,24 @@ const router = useRouter();
 const auth = useAuthStore();
 const username = ref("");
 const password = ref("");
+const captchaCode = ref("");
+const captchaId = ref("");
+const captchaSvg = ref("");
 const error = ref("");
 const submitting = ref(false);
+const captchaUrl = computed(() =>
+  captchaSvg.value ? `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(captchaSvg.value)}` : "",
+);
+
+async function loadCaptcha() {
+  const challenge = await fetchCaptcha();
+  captchaId.value = challenge.captchaId;
+  captchaSvg.value = challenge.imageSvg;
+}
+
+onMounted(() => {
+  void loadCaptcha();
+});
 
 function toggleLocale() {
   locale.value = locale.value === "zh-CN" ? "en-US" : "zh-CN";
@@ -21,10 +38,11 @@ async function onSubmit() {
   error.value = "";
   submitting.value = true;
   try {
-    await auth.signIn(username.value.trim(), password.value);
+    await auth.signIn(username.value.trim(), password.value, captchaId.value, captchaCode.value);
     await router.push({ name: "workbench" });
   } catch (caught) {
     error.value = caught instanceof ApiError ? caught.message : "登录失败";
+    void loadCaptcha();
   } finally {
     submitting.value = false;
   }
@@ -90,6 +108,17 @@ async function onSubmit() {
             show-password
             autocomplete="current-password"
           />
+        </label>
+        <label class="field">
+          <span>{{ t("login.captcha") }}</span>
+          <div class="captcha-row">
+            <span data-testid="captcha">
+              <el-input v-model="captchaCode" maxlength="8" />
+            </span>
+            <button type="button" class="captcha-image" data-testid="captcha-image" @click="loadCaptcha">
+              <img v-if="captchaUrl" :src="captchaUrl" alt="验证码" />
+            </button>
+          </div>
         </label>
         <el-button
           class="submit"

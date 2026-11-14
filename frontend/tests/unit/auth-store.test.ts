@@ -12,6 +12,8 @@ describe("auth store", () => {
     const store = useAuthStore();
     store.setSession({
       accessToken: "token-1",
+      refreshToken: "refresh-1",
+      permissions: ["system:user:list"],
       user: {
         uid: "uid",
         username: "admin",
