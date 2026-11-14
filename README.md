@@ -88,3 +88,16 @@ cd e2e && pnpm test
 ```
 
 端到端用例默认访问 `http://localhost:8899`。Compose 起来之后再跑。
+
+## 依赖审查
+
+`security.yml` 的 `dependency-review` 会检查 PR 里新增的依赖。这个仓库的 Dependency graph 还没开时，GitHub 会返回 “Dependency review is not supported”，该 job 只记下说明并成功结束，不挡住 CI。图打开之后，同一 job 会按高危及以上失败。
+
+开启步骤：
+
+1. 打开仓库 **Settings → Code security**（有的界面写 Advanced Security / Code security and analysis）。
+2. 启用 **Dependency graph**。
+3. 建议同时启用 **Dependabot alerts**。
+4. 说明见 [About the dependency graph](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/about-the-dependency-graph)。
+
+直接入口：<https://github.com/marcusmaomao/Muxi-Tech/settings/security_analysis>

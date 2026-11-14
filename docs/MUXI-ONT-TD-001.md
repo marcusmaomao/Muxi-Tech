@@ -77,7 +77,7 @@ flowchart TB
 | 数据库迁移 | Flyway | 10.x | Apache-2.0 | 替代“初始化 SQL 大文件” |
 | 元数据库 | MySQL | 8.4 LTS | GPL（服务端） | P1 适配达梦/金仓 |
 | 图库 | Neo4j Community + Java Driver | 5.26 LTS | GPLv3（服务端）/ Apache（驱动） | 只通过驱动访问 |
-| 缓存/锁 | Redis + Redisson | 7.4 / 3.x | BSD / Apache | 分布式锁、SSE 广播 |
+| 缓存/锁 | Redis + Redisson | 7.4 / 3.x | RSALv2 或 SSPL / Apache-2.0 | 分布式锁、SSE 广播。Redis 7.4 起服务端不再是 BSD |
 | 对象存储 | MinIO（S3 协议） | latest | AGPL（服务端，独立部署不链接） | 也可以换成 OSS/OBS |
 | RDF/SHACL | Apache Jena（ARQ、SHACL、规则引擎） | 5.x | Apache-2.0 | |
 | OWL | OWLAPI 5.x、ELK 0.6.x、HermiT 1.4.5.x | — | LGPL/Apache；Apache；LGPL | HermiT 作为独立 jar 动态链接 |
@@ -94,6 +94,8 @@ flowchart TB
 | 图表 | ECharts 5 | 5.x | Apache-2.0 | 质量趋势 |
 | 测试 | JUnit 5、AssertJ、Mockito、Testcontainers、ArchUnit、WireMock；Vitest、Vue Test Utils；**Playwright** | — | — | |
 | CI/CD | GitHub Actions、GHCR、Traefik（预览环境） | — | — | |
+
+Redis 7.4 起服务端许可证是 RSALv2 与 SSPL 双许可，不再是 BSD-3-Clause。它作为独立进程部署，不链入应用产物。7.2 及更早仍是 BSD-3-Clause。Redisson 仍是 Apache-2.0。
 
 ---
 

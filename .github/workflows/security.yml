@@ -15,7 +15,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - name: Check whether dependency review is available
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          url="https://api.github.com/repos/${{ github.repository }}/dependency-graph/compare/${base}...${head}"
+          code=$(curl -sS -o /tmp/dep-review.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$url")
+          echo "Dependency graph compare HTTP ${code}"
+          if grep -qi 'not supported' /tmp/dep-review.json; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Dependency graph 未开启，本 job 不阻塞 CI。开启方法见 README。"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Review dependencies
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
 
