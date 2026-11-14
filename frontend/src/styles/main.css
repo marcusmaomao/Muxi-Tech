@@ -131,7 +131,7 @@ a { color: inherit; }
   text-align: left;
   font-size: 14px;
 }
-.rail a.active { background: rgba(231, 176, 137, 0.16); color: #fff; }
+.rail a.active, .rail a.router-link-active { background: rgba(231, 176, 137, 0.16); color: #fff; }
 .rail button.nav { cursor: not-allowed; opacity: 0.72; }
 .soon {
   font-size: 11px;
@@ -154,7 +154,10 @@ a { color: inherit; }
 .who strong { color: var(--ink); }
 .page { padding: 28px; }
 .page h1 { margin: 0 0 8px; font-size: 32px; }
-.hello { margin: 0 0 22px; color: var(--ink-soft); }
+.hello, .lead { margin: 0 0 22px; color: var(--ink-soft); }
+.form-grid { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 8px; margin: 12px 0 16px; align-items: center; }
+.form-grid .wide { grid-column: span 2; }
+.hint { color: var(--ink-soft); font-size: 13px; }
 .pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .pillar {
   background: var(--card);

@@ -15,7 +15,11 @@ Copyright (c) 2026 武汉沐曦云技术有限公司
 - Logback：EPL-1.0 OR LGPL-2.1
 - JJWT：Apache-2.0
 - springdoc-openapi / swagger：Apache-2.0
-- JUnit、ArchUnit：EPL-2.0、Apache-2.0（仅测试）
+- PostgreSQL JDBC：BSD-2-Clause
+- 达梦 JDBC `com.dameng:DmJdbcDriver18`：Apache-2.0（Maven Central）
+- Apache Tika、PDFBox、POI：Apache-2.0
+- AWS SDK for Java（S3 客户端，用于访问 MinIO）：Apache-2.0
+- JUnit、ArchUnit、Testcontainers：EPL-2.0、Apache-2.0、MIT（仅测试）
 - AssertJ：Apache-2.0（仅测试）
 - Mockito：MIT（仅测试）
 - Vue、Vue Router、Pinia、Vite、Element Plus、Axios、vue-i18n、Vitest、Playwright：MIT
@@ -24,8 +28,8 @@ Copyright (c) 2026 武汉沐曦云技术有限公司
 
 独立部署、不链入应用产物
 - MySQL Server 8.4：GPL-2.0
-- Redis 7.4：RSALv2 / SSPL（技术文档写成 BSD；7.4 起许可证已变更，见待决事项）
-- Neo4j Community 5.26：GPL-3.0（服务端）；Java 驱动为 Apache-2.0，当前脚手架尚未引入驱动
+- Redis 7.4：RSALv2 / SSPL
+- Neo4j Community 5.26：GPL-3.0（服务端）；Java 驱动为 Apache-2.0（仅测试）
 - MinIO（镜像 `cgr.dev/chainguard/minio`，因 Docker Hub 下架 `minio/minio`）：AGPL-3.0（服务端独立部署，应用不链接其代码）
 - WireMock：Apache-2.0
 - Nginx：BSD-2-Clause

@@ -62,6 +62,8 @@ docker buildx bake -f deploy/docker-bake.hcl
 | `MOP_DEMO_ADMIN_USERNAME` | `admin` |
 | `MOP_DEMO_ADMIN_PASSWORD` | `demo-admin` |
 | `MOP_CAPTCHA_EXPOSE` | `true` 时验证码接口附带明文，只给本地和端到端测试 |
+| `MOP_DATASOURCE_SECRET` | 数据源口令的加密密钥，只给本地 |
+| `MOP_STORAGE_*` | MinIO 地址、账号和桶，由 Compose 注入服务端 |
 | `MOP_JWT_SECRET` | 至少 32 字节，仅限本地 |
 
 示例值在 [deploy/compose/.env.example](deploy/compose/.env.example)。这是公开的本地演示口令，不能用于任何真实环境。未设置 `MOP_DEMO_SEED` 时不会创建账号。

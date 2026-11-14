@@ -1,5 +1,6 @@
 package cn.muxicloud.mop.system.security;
 
+import cn.muxicloud.mop.security.RequiresPermission;
 import cn.muxicloud.mop.system.service.AccessService;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;

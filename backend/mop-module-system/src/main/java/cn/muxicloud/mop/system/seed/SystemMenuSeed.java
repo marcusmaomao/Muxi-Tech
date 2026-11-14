@@ -39,7 +39,19 @@ public class SystemMenuSeed implements ApplicationRunner {
             {"新建参数", "", "BUTTON", "system:config:create", "81"},
             {"通知", "/system/notices", "MENU", "system:notice:list", "90"},
             {"新建通知", "", "BUTTON", "system:notice:create", "91"},
-            {"日志", "/system/logs", "MENU", "system:log:list", "100"}
+            {"日志", "/system/logs", "MENU", "system:log:list", "100"},
+            {"项目", "/basic/projects", "MENU", "basic:project:list", "110"},
+            {"新建项目", "", "BUTTON", "basic:project:create", "111"},
+            {"修改项目", "", "BUTTON", "basic:project:update", "112"},
+            {"删除项目", "", "BUTTON", "basic:project:delete", "113"},
+            {"项目成员", "", "BUTTON", "basic:project:member", "114"},
+            {"数据源", "/basic/datasources", "MENU", "basic:datasource:list", "120"},
+            {"新建数据源", "", "BUTTON", "basic:datasource:create", "121"},
+            {"测试数据源", "", "BUTTON", "basic:datasource:test", "122"},
+            {"修改数据源", "", "BUTTON", "basic:datasource:update", "123"},
+            {"删除数据源", "", "BUTTON", "basic:datasource:delete", "124"},
+            {"文件", "/basic/files", "MENU", "basic:file:list", "130"},
+            {"上传文件", "", "BUTTON", "basic:file:upload", "131"}
     };
 
     private final DemoSeedProperties properties;
@@ -73,10 +85,16 @@ public class SystemMenuSeed implements ApplicationRunner {
             return;
         }
         TenantContext.set(role.getTenantId());
-        if (menuMapper.selectCount(new LambdaQueryWrapper<>()) > 0) {
-            return;
-        }
         for (String[] spec : MENUS) {
+            LambdaQueryWrapper<MenuEntity> existing = new LambdaQueryWrapper<>();
+            if (!spec[1].isBlank()) {
+                existing.eq(MenuEntity::getPath, spec[1]);
+            } else {
+                existing.eq(MenuEntity::getPermission, spec[3]);
+            }
+            if (menuMapper.selectCount(existing) > 0) {
+                continue;
+            }
             MenuEntity menu = new MenuEntity();
             menu.setTenantId(role.getTenantId());
             menu.setName(spec[0]);

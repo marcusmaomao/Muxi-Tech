@@ -24,7 +24,7 @@ async function onLogout() {
         </div>
       </div>
       <nav>
-        <router-link to="/workbench" class="active">{{ t("nav.workbench") }}</router-link>
+        <router-link to="/workbench">{{ t("nav.workbench") }}</router-link>
         <button class="nav" type="button" disabled>
           {{ t("nav.modeling") }} <span class="soon">{{ t("nav.soon") }}</span>
         </button>
@@ -34,6 +34,9 @@ async function onLogout() {
         <button class="nav" type="button" disabled>
           {{ t("nav.runtime") }} <span class="soon">{{ t("nav.soon") }}</span>
         </button>
+        <router-link v-if="auth.can('basic:project:list')" to="/basic/projects">{{ t("nav.projects") }}</router-link>
+        <router-link v-if="auth.can('basic:datasource:list')" to="/basic/datasources">{{ t("nav.datasources") }}</router-link>
+        <router-link v-if="auth.can('basic:file:list')" to="/basic/files">{{ t("nav.files") }}</router-link>
         <router-link v-if="auth.can('system:user:list')" to="/system/users">{{ t("nav.system") }}</router-link>
       </nav>
     </aside>
