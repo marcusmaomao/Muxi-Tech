@@ -1,0 +1,5 @@
+# Spring Framework 6.2.19 是 Spring Boot 3.5.16 管理的版本，也是 Maven Central 上 6.2 线的最新公开版。
+# 公告中的 6.2.20 标为 Enterprise Support Only，公共仓库没有。升到 7.0 会离开技术文档锁定的 Boot 3.5。
+# 这两条的触发条件（XsltView、特定 SSE 视图）本脚手架没有用到。
+CVE-2026-47884
+CVE-2026-47890
