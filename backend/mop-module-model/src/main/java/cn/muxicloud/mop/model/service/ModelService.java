@@ -9,12 +9,14 @@ import cn.muxicloud.mop.model.entity.CommitEntity;
 import cn.muxicloud.mop.model.entity.ElementEntity;
 import cn.muxicloud.mop.model.entity.ElementRefEntity;
 import cn.muxicloud.mop.model.entity.ProjectEntity;
+import cn.muxicloud.mop.model.entity.ProjectMemberEntity;
 import cn.muxicloud.mop.model.mapper.BranchMapper;
 import cn.muxicloud.mop.model.mapper.ChangeMapper;
 import cn.muxicloud.mop.model.mapper.CommitMapper;
 import cn.muxicloud.mop.model.mapper.ElementMapper;
 import cn.muxicloud.mop.model.mapper.ElementRefMapper;
 import cn.muxicloud.mop.model.mapper.ProjectMapper;
+import cn.muxicloud.mop.model.mapper.ProjectMemberMapper;
 import cn.muxicloud.mop.model.schema.PayloadSchemaValidator;
 import cn.muxicloud.mop.security.AuthenticatedUser;
 import cn.muxicloud.mop.tenant.TenantContext;
@@ -26,6 +28,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.HexFormat;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -33,7 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ModelService {
+    private static final Set<String> MEMBER_ROLES = Set.of("OWNER", "EDITOR", "VIEWER");
+
     private final ProjectMapper projectMapper;
+    private final ProjectMemberMapper memberMapper;
     private final BranchMapper branchMapper;
     private final ElementMapper elementMapper;
     private final ElementRefMapper elementRefMapper;
@@ -44,6 +51,7 @@ public class ModelService {
 
     public ModelService(
             ProjectMapper projectMapper,
+            ProjectMemberMapper memberMapper,
             BranchMapper branchMapper,
             ElementMapper elementMapper,
             ElementRefMapper elementRefMapper,
@@ -52,6 +60,7 @@ public class ModelService {
             PayloadSchemaValidator schemaValidator,
             ObjectMapper objectMapper) {
         this.projectMapper = projectMapper;
+        this.memberMapper = memberMapper;
         this.branchMapper = branchMapper;
         this.elementMapper = elementMapper;
         this.elementRefMapper = elementRefMapper;
@@ -61,19 +70,46 @@ public class ModelService {
         this.objectMapper = objectMapper;
     }
 
+    public List<ProjectEntity> projects() {
+        return projectMapper.selectList(new LambdaQueryWrapper<ProjectEntity>().orderByDesc(ProjectEntity::getId));
+    }
+
+    public ProjectEntity project(Long id) {
+        ProjectEntity project = projectMapper.selectById(id);
+        if (project == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        return project;
+    }
+
     @Transactional
-    public ProjectEntity createProject(String code, String name, String namespace, String description, AuthenticatedUser actor) {
-        if (!isNamespace(namespace)) {
-            throw new MopException(ErrorCode.VALIDATION, "命名空间必须是以 # 或 / 结尾的绝对 URI", null);
+    public ProjectEntity createProject(
+            String code, String name, String namespace, String domain, String scopeInclude, String scopeExclude,
+            String description, AuthenticatedUser actor) {
+        requireNamespace(namespace);
+        requireText(code, 64, "编码");
+        requireText(name, 128, "名称");
+        requireOptional(domain, 128, "领域");
+        requireOptional(scopeInclude, 1000, "范围包含");
+        requireOptional(scopeExclude, 1000, "范围排除");
+        requireOptional(description, 1000, "说明");
+        if (projectMapper.selectCount(new LambdaQueryWrapper<ProjectEntity>().eq(ProjectEntity::getCode, code)) > 0) {
+            throw new MopException(ErrorCode.VALIDATION, "项目编码已存在", null);
         }
         ProjectEntity project = new ProjectEntity();
         project.setTenantId(actor.tenantId());
-        project.setCode(code);
-        project.setName(name);
-        project.setNamespace(namespace);
-        project.setDescription(description);
+        project.setCode(code.trim());
+        project.setName(name.trim());
+        project.setNamespace(namespace.trim());
+        project.setDomain(blankToNull(domain));
+        project.setScopeInclude(blankToNull(scopeInclude));
+        project.setScopeExclude(blankToNull(scopeExclude));
+        project.setDescription(blankToNull(description));
+        project.setOwnerUserId(actor.userId());
+        project.setCreatedBy(actor.userId());
         project.setHeadRev(0L);
         projectMapper.insert(project);
+        addMember(project, actor.userId(), "OWNER");
         BranchEntity branch = new BranchEntity();
         branch.setTenantId(actor.tenantId());
         branch.setProjectId(project.getId());
@@ -85,6 +121,63 @@ public class ModelService {
         branch.setCreatedAt(LocalDateTime.now());
         branchMapper.insert(branch);
         return project;
+    }
+
+    @Transactional
+    public ProjectEntity updateProject(
+            Long id, String name, String namespace, String domain, String scopeInclude, String scopeExclude,
+            String description, Long ownerUserId) {
+        ProjectEntity project = project(id);
+        requireText(name, 128, "名称");
+        requireNamespace(namespace);
+        requireOptional(domain, 128, "领域");
+        requireOptional(scopeInclude, 1000, "范围包含");
+        requireOptional(scopeExclude, 1000, "范围排除");
+        requireOptional(description, 1000, "说明");
+        project.setName(name.trim());
+        project.setNamespace(namespace.trim());
+        project.setDomain(blankToNull(domain));
+        project.setScopeInclude(blankToNull(scopeInclude));
+        project.setScopeExclude(blankToNull(scopeExclude));
+        project.setDescription(blankToNull(description));
+        if (ownerUserId != null) {
+            project.setOwnerUserId(ownerUserId);
+        }
+        projectMapper.updateById(project);
+        return project;
+    }
+
+    public void deleteProject(Long id) {
+        project(id);
+        projectMapper.deleteById(id);
+    }
+
+    public List<ProjectMemberEntity> members(Long projectId) {
+        project(projectId);
+        return memberMapper.selectList(new LambdaQueryWrapper<ProjectMemberEntity>()
+                .eq(ProjectMemberEntity::getProjectId, projectId)
+                .orderByAsc(ProjectMemberEntity::getId));
+    }
+
+    @Transactional
+    public List<ProjectMemberEntity> replaceMembers(Long projectId, List<MemberInput> members) {
+        ProjectEntity project = project(projectId);
+        Set<Long> seen = new LinkedHashSet<>();
+        List<MemberInput> clean = new ArrayList<>();
+        for (MemberInput member : members) {
+            if (member.userId() == null || !MEMBER_ROLES.contains(member.role())) {
+                throw new MopException(ErrorCode.VALIDATION, "成员需要用户和角色 OWNER、EDITOR 或 VIEWER", null);
+            }
+            if (!seen.add(member.userId())) {
+                throw new MopException(ErrorCode.VALIDATION, "同一用户不能重复加入项目", null);
+            }
+            clean.add(member);
+        }
+        memberMapper.delete(new LambdaQueryWrapper<ProjectMemberEntity>().eq(ProjectMemberEntity::getProjectId, projectId));
+        for (MemberInput member : clean) {
+            addMember(project, member.userId(), member.role());
+        }
+        return members(projectId);
     }
 
     public List<BranchEntity> branches(Long projectId) {
@@ -254,6 +347,38 @@ public class ModelService {
         return value == null || value.isNull() ? null : value.asText();
     }
 
+    private void addMember(ProjectEntity project, Long userId, String role) {
+        ProjectMemberEntity member = new ProjectMemberEntity();
+        member.setTenantId(project.getTenantId());
+        member.setProjectId(project.getId());
+        member.setUserId(userId);
+        member.setMemberRole(role);
+        member.setCreatedAt(LocalDateTime.now());
+        memberMapper.insert(member);
+    }
+
+    private static void requireNamespace(String namespace) {
+        if (!isNamespace(namespace)) {
+            throw new MopException(ErrorCode.VALIDATION, "命名空间必须是以 # 或 / 结尾的绝对 URI", null);
+        }
+    }
+
+    private static void requireText(String value, int max, String label) {
+        if (value == null || value.isBlank() || value.trim().length() > max) {
+            throw new MopException(ErrorCode.VALIDATION, label + "不能为空，且最长 " + max, null);
+        }
+    }
+
+    private static void requireOptional(String value, int max, String label) {
+        if (value != null && value.trim().length() > max) {
+            throw new MopException(ErrorCode.VALIDATION, label + "最长 " + max, null);
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private static boolean isNamespace(String namespace) {
         if (namespace == null || !(namespace.endsWith("#") || namespace.endsWith("/"))) {
             return false;
@@ -275,4 +400,6 @@ public class ModelService {
     }
 
     public record ChangeInput(String op, String uid, String type, String apiName, JsonNode payload) {}
+
+    public record MemberInput(Long userId, String role) {}
 }

@@ -1,4 +1,4 @@
-package cn.muxicloud.mop.system.security;
+package cn.muxicloud.mop.security;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

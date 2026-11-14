@@ -20,6 +20,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
     encoding: UTF-8
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   jackson:
     default-property-inclusion: non_null
     serialization:
@@ -42,6 +46,14 @@ mop:
     refresh-ttl-seconds: ${MOP_JWT_REFRESH_TTL_SECONDS:604800}
   captcha:
     expose: ${MOP_CAPTCHA_EXPOSE:false}
+  datasource:
+    secret: ${MOP_DATASOURCE_SECRET:}
+  storage:
+    endpoint: ${MOP_STORAGE_ENDPOINT:}
+    access-key: ${MOP_STORAGE_ACCESS_KEY:}
+    secret-key: ${MOP_STORAGE_SECRET_KEY:}
+    bucket: ${MOP_STORAGE_BUCKET:mop}
+    region: ${MOP_STORAGE_REGION:us-east-1}
   demo:
     seed: ${MOP_DEMO_SEED:false}
     admin-username: ${MOP_DEMO_ADMIN_USERNAME:admin}

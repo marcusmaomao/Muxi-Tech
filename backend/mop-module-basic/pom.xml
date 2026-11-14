@@ -16,5 +16,50 @@
       <groupId>cn.muxicloud.mop</groupId>
       <artifactId>mop-common</artifactId>
     </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-mybatis</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.dameng</groupId>
+      <artifactId>DmJdbcDriver18</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-text-module</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-pdf-module</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-microsoft-module</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

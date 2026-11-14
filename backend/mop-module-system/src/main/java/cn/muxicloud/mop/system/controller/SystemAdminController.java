@@ -12,7 +12,7 @@ import cn.muxicloud.mop.system.entity.PostEntity;
 import cn.muxicloud.mop.system.entity.RoleEntity;
 import cn.muxicloud.mop.system.entity.UserEntity;
 import cn.muxicloud.mop.system.security.OperLog;
-import cn.muxicloud.mop.system.security.RequiresPermission;
+import cn.muxicloud.mop.security.RequiresPermission;
 import cn.muxicloud.mop.system.service.SystemAdminService;
 import cn.muxicloud.mop.web.api.ApiResponse;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

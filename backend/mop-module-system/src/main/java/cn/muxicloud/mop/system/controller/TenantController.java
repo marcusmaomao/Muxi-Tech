@@ -2,7 +2,7 @@ package cn.muxicloud.mop.system.controller;
 
 import cn.muxicloud.mop.system.entity.TenantEntity;
 import cn.muxicloud.mop.system.security.OperLog;
-import cn.muxicloud.mop.system.security.RequiresPermission;
+import cn.muxicloud.mop.security.RequiresPermission;
 import cn.muxicloud.mop.system.service.TenantAdminService;
 import cn.muxicloud.mop.web.api.ApiResponse;
 import jakarta.validation.constraints.NotBlank;
