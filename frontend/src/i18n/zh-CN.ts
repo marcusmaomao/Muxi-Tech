@@ -1,0 +1,35 @@
+export default {
+  brand: "沐曦本体平台",
+  tagline: "建得准 · 验得严 · 管得住 · 用得上",
+  login: {
+    title: "登录工作台",
+    subtitle: "用本体把业务对象、约束和动作放在同一张工作台上。",
+    username: "用户名",
+    password: "密码",
+    submit: "登录",
+    hint: "演示账号由环境变量初始化，见部署说明。",
+  },
+  nav: {
+    workbench: "工作台",
+    modeling: "建模",
+    semantic: "语义",
+    runtime: "运行时",
+    system: "系统",
+    soon: "即将开放",
+  },
+  workbench: {
+    title: "工作台",
+    hello: "你好，{name}",
+    emptyTitle: "还没有本体项目",
+    emptyBody: "项目、画布、对象和动作会在后续里程碑里打开。当前可以确认登录和平台连通。",
+    healthOk: "接口正常",
+    healthDown: "接口未连通",
+    logout: "退出",
+    pillars: {
+      model: { title: "建得准", text: "可视化建模、术语和能力问题。" },
+      check: { title: "验得严", text: "SHACL、轻量推理和质量门禁。" },
+      govern: { title: "管得住", text: "分支、差异、合并和权限。" },
+      run: { title: "用得上", text: "对象、动作和函数。" },
+    },
+  },
+};

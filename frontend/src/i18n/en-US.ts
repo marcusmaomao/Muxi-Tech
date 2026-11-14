@@ -1,0 +1,35 @@
+export default {
+  brand: "Muxi Ontology Platform",
+  tagline: "Precise · Verified · Governed · Operational",
+  login: {
+    title: "Sign in",
+    subtitle: "Keep objects, constraints, and actions on one workbench.",
+    username: "Username",
+    password: "Password",
+    submit: "Sign in",
+    hint: "The demo account is created from environment variables. See the deployment notes.",
+  },
+  nav: {
+    workbench: "Workbench",
+    modeling: "Modeling",
+    semantic: "Semantic",
+    runtime: "Runtime",
+    system: "System",
+    soon: "Soon",
+  },
+  workbench: {
+    title: "Workbench",
+    hello: "Hello, {name}",
+    emptyTitle: "No ontology projects yet",
+    emptyBody: "Projects, the canvas, objects, and actions arrive in later milestones. Login and connectivity work now.",
+    healthOk: "API is up",
+    healthDown: "API is unreachable",
+    logout: "Sign out",
+    pillars: {
+      model: { title: "Model", text: "Visual modeling, terms, and competency questions." },
+      check: { title: "Check", text: "SHACL, lightweight reasoning, and quality gates." },
+      govern: { title: "Govern", text: "Branches, diffs, merges, and access control." },
+      run: { title: "Run", text: "Objects, actions, and functions." },
+    },
+  },
+};

@@ -1,0 +1,60 @@
+name: security
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 16 * * 1"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for secrets
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.0 detect \
+            --source=/repo \
+            --config=/repo/.gitleaks.toml \
+            --redact \
+            --verbose
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: backend/**/pom.xml
+      - name: Package jars for the scanner
+        run: mvn -B -f backend/pom.xml -DskipTests package
+      - name: Scan dependencies
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work aquasec/trivy:0.67.2 fs \
+            --exit-code 1 \
+            --severity CRITICAL \
+            --ignore-unfixed \
+            --scanners vuln \
+            --skip-version-check \
+            --ignorefile /work/.trivyignore \
+            --skip-files '**/*pom.xml' \
+            --skip-dirs frontend/node_modules \
+            --skip-dirs e2e/node_modules \
+            /work

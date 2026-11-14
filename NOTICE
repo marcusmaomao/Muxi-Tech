@@ -1,0 +1,34 @@
+沐曦本体平台
+Copyright (c) 2026 武汉沐曦云技术有限公司
+
+本项目以 MIT 许可证发布，见 LICENSE。
+下面列出直接依赖和独立部署组件的许可证。传递依赖以各自的许可证为准。
+
+应用依赖（链入可分发产物）
+- Spring Boot、Spring Framework、Spring Security、Micrometer：Apache-2.0
+- MyBatis、MyBatis-Plus：Apache-2.0
+- Flyway：Apache-2.0
+- MySQL Connector/J：GPL-2.0 WITH Universal-FOSS-exception-1.0（本项目为 MIT，适用该例外）
+- Jackson：Apache-2.0
+- Tomcat（嵌入式）：Apache-2.0
+- SLF4J：MIT
+- Logback：EPL-1.0 OR LGPL-2.1
+- JJWT：Apache-2.0
+- springdoc-openapi / swagger：Apache-2.0
+- JUnit、ArchUnit：EPL-2.0、Apache-2.0（仅测试）
+- AssertJ：Apache-2.0（仅测试）
+- Mockito：MIT（仅测试）
+- Vue、Vue Router、Pinia、Vite、Element Plus、Axios、vue-i18n、Vitest、Playwright：MIT
+- TypeScript、typescript-eslint：Apache-2.0
+- Noto Sans SC（@fontsource/noto-sans-sc）：SIL OFL-1.1
+
+独立部署、不链入应用产物
+- MySQL Server 8.4：GPL-2.0
+- Redis 7.4：RSALv2 / SSPL（技术文档写成 BSD；7.4 起许可证已变更，见待决事项）
+- Neo4j Community 5.26：GPL-3.0（服务端）；Java 驱动为 Apache-2.0，当前脚手架尚未引入驱动
+- MinIO（镜像 `cgr.dev/chainguard/minio`，因 Docker Hub 下架 `minio/minio`）：AGPL-3.0（服务端独立部署，应用不链接其代码）
+- WireMock：Apache-2.0
+- Nginx：BSD-2-Clause
+- Eclipse Temurin：GPL-2.0 WITH Classpath-exception-2.0
+
+禁止把 AGPL 或未带例外的 GPL 库打进 mop-server / mop-web 的可分发产物。上面列出的 GPL/AGPL 组件要么带 FOSS 或 Classpath 例外，要么只作为独立进程运行。

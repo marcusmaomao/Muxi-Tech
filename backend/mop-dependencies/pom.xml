@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>cn.muxicloud.mop</groupId>
+    <artifactId>mop-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>mop-dependencies</artifactId>
+  <packaging>pom</packaging>
+  <name>mop-dependencies</name>
+  <description>版本清单占位模块。依赖版本的唯一来源是 mop-parent 的 dependencyManagement，避免父子工程互相 import 导致的反应器解析问题。</description>
+</project>

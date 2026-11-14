@@ -1,0 +1,14 @@
+title = "mop"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "本地演示占位符，不是真实密钥"
+paths = [
+  '''(^|/)deploy/compose/\.env\.example$''',
+  '''(^|/)README\.md$''',
+  '''(^|/)NOTICE$''',
+  '''(^|/)docs/''',
+  '''(^|/)e2e/''',
+]
