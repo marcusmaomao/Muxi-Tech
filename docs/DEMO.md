@@ -41,7 +41,7 @@ docker compose up -d --build
 ## 演示步骤
 
 1. 登录后打开「项目」，确认有「电网设备」。点「建模」可以看到能力问题、对象和关系。
-2. 在建模页点「导出 Turtle」，再点「下载导出文件」。文件里有 `subClassOf`。SHACL 形状和多重继承要到 M2 才验证。
+2. 在建模页点「导出 Turtle」，再点「下载导出文件」。文件里有 `subClassOf`。点「导出 SHACL」得到 `shapes.ttl`。把一份 Turtle 数据贴进校验框，可以看到逐条违规。命名空间仍是占位。
 3. 打开「同步」。选择项目「电网设备」、数据源「电网样例库」、对象「变电站」、表 `src_station`。如果这是新环境，映射已经保存过，可以直接预览到「城东站」，然后点「全量同步」。再对变压器、线路、巡检记录各做一次全量同步。
 4. 要看增量：对巡检记录做完全量同步后，向 `src_inspection` 插入一行更晚的 `updated_at`，再点「增量同步」。本地也可以用已登录且具备 `runtime:sync` 的令牌调用 `POST /api/v1/demo/grid/inspections`，正文 `{"id":"i2","note":"复检"}`。这个接口只在 `MOP_DEMO_GRID=true` 时存在。
 5. 打开「图谱」，类型选「巡检记录」或「变压器」，点「展开邻居」，详情里能看到同步进来的属性。
@@ -54,4 +54,4 @@ docker compose up -d --build
 
 ## 这次基线没有覆盖的部分
 
-E2E-05 里的 SHACL shapes 和多重继承（一个类同时有多个父类）属于 M2。当前导出只检查 Turtle 下载，以及文件中的 `subClassOf` 和公理。
+E2E-05 已检查 Turtle 里的多重继承、`disjointWith`，以及可下载的 `shapes.ttl`。推理、能力问题测试和质量中心仍在后面的任务里。

@@ -27,6 +27,11 @@ const maxCount = ref("1");
 const defaultValue = ref("");
 const preview = ref("");
 const downloadUrl = ref("");
+const shapesPreview = ref("");
+const shapesUrl = ref("");
+const axiomKind = ref("SUBCLASS");
+const shaclData = ref("");
+const shaclReport = ref("");
 const branchName = ref("");
 const editUid = ref("");
 const editDescription = ref("");
@@ -135,7 +140,7 @@ async function createElement() {
     payload.invertible = false;
   }
   if (kind.value === "AXIOM") {
-    payload.kind = "SUBCLASS";
+    payload.kind = axiomKind.value;
     payload.subjectUid = ownerUid.value;
     payload.objectUid = targetUid.value;
   }
@@ -190,6 +195,36 @@ async function loadEffective() {
   }
 }
 
+async function exportShapes() {
+  message.value = "";
+  try {
+    const response = await http.get<string>(`/branches/${branchId.value}/shapes`, { responseType: "text" });
+    shapesPreview.value = response.data;
+    if (shapesUrl.value) {
+      URL.revokeObjectURL(shapesUrl.value);
+    }
+    shapesUrl.value = URL.createObjectURL(new Blob([response.data], { type: "text/turtle;charset=utf-8" }));
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "导出失败";
+  }
+}
+
+async function validateShapes() {
+  message.value = "";
+  shaclReport.value = "";
+  try {
+    const response = await http.post<{ data: { conforms: boolean; issues: Array<{ severity: string; focusNode: string; path: string; message: string }> } }>(
+      `/branches/${branchId.value}/shacl/validate`,
+      { data: shaclData.value },
+    );
+    const report = response.data.data;
+    const lines = (report?.issues ?? []).map((issue) => `${issue.severity} ${issue.focusNode ?? ""} ${issue.path ?? ""} ${issue.message ?? ""}`.trim());
+    shaclReport.value = report?.conforms ? "符合形状" : lines.join("\n");
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "校验失败";
+  }
+}
+
 async function exportOwl(format: string) {
   message.value = "";
   try {
@@ -225,6 +260,7 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
       <button type="button" data-testid="export-ttl" @click="exportOwl('ttl')">导出 Turtle</button>
       <button type="button" data-testid="export-rdfxml" @click="exportOwl('rdfxml')">导出 RDF/XML</button>
       <button type="button" data-testid="export-owl" @click="exportOwl('owl')">导出 OWL</button>
+      <button type="button" data-testid="export-shapes" @click="exportShapes">导出 SHACL</button>
     </div>
     <div class="kind-row">
       <button v-for="item in kinds" :key="item[0]" type="button" :data-testid="`kind-${item[0]}`" :class="{ on: kind === item[0] }" @click="kind = item[0]">
@@ -246,6 +282,11 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
         <option value="">{{ kind === 'ENUM_VALUE' ? '所属枚举' : kind === 'PROPERTY' ? '所属对象' : '起点 / 对象' }}</option>
         <option v-for="row in ofType(kind === 'ENUM_VALUE' ? 'ENUM_TYPE' : 'OBJECT_TYPE')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
       </select>
+      <select v-if="kind === 'AXIOM'" v-model="axiomKind" data-testid="axiom-kind">
+        <option value="SUBCLASS">子类</option>
+        <option value="EQUIVALENT">等价</option>
+        <option value="DISJOINT">互斥</option>
+      </select>
       <select v-if="kind === 'LINK_TYPE' || kind === 'AXIOM'" v-model="targetUid" data-testid="element-target">
         <option value="">终点</option>
         <option v-for="row in ofType('OBJECT_TYPE')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
@@ -263,7 +304,14 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
       <span class="hint" data-testid="form-error">{{ message }}</span>
     </form>
     <a v-if="downloadUrl" :href="downloadUrl" download="ontology.ttl" data-testid="download-ttl">下载导出文件</a>
+    <a v-if="shapesUrl" :href="shapesUrl" download="shapes.ttl" data-testid="download-shapes">下载 shapes.ttl</a>
     <pre v-if="preview" class="export" data-testid="export-preview">{{ preview }}</pre>
+    <pre v-if="shapesPreview" class="export" data-testid="shapes-preview">{{ shapesPreview }}</pre>
+    <form class="form-grid" @submit.prevent="validateShapes">
+      <textarea v-model="shaclData" data-testid="shacl-data" rows="4" placeholder="粘贴待校验的 Turtle"></textarea>
+      <el-button native-type="submit" data-testid="shacl-validate">校验数据</el-button>
+      <pre v-if="shaclReport" data-testid="shacl-report">{{ shaclReport }}</pre>
+    </form>
     <ul data-testid="element-list">
       <li v-for="row in ofType(kind)" :key="row.uid">{{ labelOf(row) }} · {{ row.apiName }}</li>
     </ul>

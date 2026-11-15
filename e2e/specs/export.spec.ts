@@ -72,6 +72,22 @@ test("E2E-05 exports downloadable Turtle with subclass axioms", async ({ page })
   await page.getByTestId("create-element").click();
   await expect(page.getByTestId("element-list")).toContainText("线路是资产");
 
+  await page.getByTestId("axiom-kind").selectOption("DISJOINT");
+  await page.getByTestId("element-name").locator("input").fill("变压器与线路互斥");
+  await page.getByTestId("element-api").locator("input").fill("transformerDisjointLine");
+  await page.getByTestId("element-owner").selectOption({ label: "变压器" });
+  await page.getByTestId("element-target").selectOption({ label: "线路" });
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("变压器与线路互斥");
+
+  await page.getByTestId("kind-DATA_RULE").click();
+  await page.getByTestId("element-name").locator("input").fill("电压范围");
+  await page.getByTestId("element-api").locator("input").fill("voltageRange");
+  await page.getByTestId("element-owner").selectOption({ label: "变压器" });
+  await page.getByTestId("element-property").selectOption({ label: "额定电压" });
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("电压范围");
+
   await page.getByTestId("export-ttl").click();
   await expect(page.getByTestId("export-preview")).toContainText("subClassOf");
   const downloadPromise = page.waitForEvent("download");
@@ -87,7 +103,31 @@ test("E2E-05 exports downloadable Turtle with subclass axioms", async ({ page })
   expect(text).toContain("#Combo");
   expect(text).toMatch(/subClassOf[\s\S]*#Transformer/);
   expect(text).toMatch(/subClassOf[\s\S]*#Line/);
+  expect(text).toContain("disjointWith");
   const preview = page.getByTestId("export-preview");
   await expect(preview).toContainText("subClassOf");
+  await expect(preview).toContainText("disjointWith");
+
+  await page.getByTestId("export-shapes").click();
+  const shapes = page.getByTestId("shapes-preview");
+  await expect(shapes).toContainText("NodeShape");
+  await expect(shapes).toContainText("ratedVoltage");
+  await expect(shapes).toContainText("minInclusive");
+  const shapesDownloadPromise = page.waitForEvent("download");
+  await page.getByTestId("download-shapes").click();
+  const shapesDownload = await shapesDownloadPromise;
+  expect(shapesDownload.suggestedFilename()).toContain("shapes.ttl");
+  const shapesText = readFileSync((await shapesDownload.path()) ?? "", "utf8");
+  expect(shapesText).toContain("NodeShape");
+  expect(shapesText).toContain("minCount");
+  expect(shapesText).toContain(`https://muxi.example/ont/${stamp}#`);
+
+  await page.getByTestId("shacl-data").fill(`@prefix ex: <https://muxi.example/ont/${stamp}#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:over a ex:Transformer ; ex:ratedVoltage "1500"^^xsd:decimal .
+`);
+  await page.getByTestId("shacl-validate").click();
+  await expect(page.getByTestId("shacl-report")).toContainText("Violation");
+  await expect(page.getByTestId("shacl-report")).toContainText("over");
   await page.screenshot({ path: "test-results/export-turtle.png", fullPage: true });
 });

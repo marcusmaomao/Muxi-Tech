@@ -63,7 +63,7 @@ class OwlExporterTest {
         CatalogSnapshot snapshot = new CatalogSnapshot(NAMESPACE, List.of(
                 element("asset", "OBJECT_TYPE", "Asset", null, "{\"displayName\":\"设备资产\",\"apiName\":\"Asset\"}"),
                 element("line", "OBJECT_TYPE", "Line", null, "{\"displayName\":\"线路\",\"apiName\":\"Line\"}"),
-                element("combo", "OBJECT_TYPE", "Combo", null, "{\"displayName\":\"组合设备\",\"apiName\":\"Combo\",\"parentUids\":[\"asset\",\"line\"]}")));
+                element("combo", "OBJECT_TYPE", "Combo", null, "{\"displayName\":\"组合设备\",\"apiName\":\"Combo\",\"parentUids\":[\"asset\",\"line\"]}")), 0L);
         byte[] turtle = exporter.export(snapshot, "ttl").body();
         String text = new String(turtle, StandardCharsets.UTF_8);
         assertThat(text).contains("subClassOf");
@@ -85,7 +85,7 @@ class OwlExporterTest {
                 element("en", "ENUM_TYPE", "RunState", null, "{\"displayName\":\"运行状态\",\"apiName\":\"RunState\"}"),
                 element("ev", "ENUM_VALUE", "Running", "en", "{\"displayName\":\"运行\",\"apiName\":\"Running\",\"ownerUid\":\"en\"}"),
                 element("ax", "AXIOM", null, null, "{\"kind\":\"SUBCLASS\",\"subjectUid\":\"tx\",\"objectUid\":\"st\"}")
-        ));
+        ), 0L);
     }
 
     private static CatalogElement element(String uid, String type, String apiName, String ownerUid, String payload) {

@@ -218,7 +218,7 @@ public class ModelService implements BranchCatalog, ElementWriter {
         List<CatalogElement> rows = elements(branchId, null).stream()
                 .map(row -> new CatalogElement(row.getUid(), row.getElementType(), row.getApiName(), row.getOwnerUid(), row.getPayload()))
                 .toList();
-        return new CatalogSnapshot(project.getNamespace(), rows);
+        return new CatalogSnapshot(project.getNamespace(), rows, project.getId());
     }
 
     public List<ElementEntity> elements(Long branchId, String type) {
