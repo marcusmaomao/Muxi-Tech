@@ -14,6 +14,7 @@ export default {
     workbench: "Workbench",
     modeling: "Modeling",
     versions: "Versions",
+    canvas: "Canvas",
     semantic: "Semantic",
     runtime: "Runtime",
     sync: "Sync",
