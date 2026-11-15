@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MergeService {
     private static final List<String> TYPE_ORDER = List.of(
-            "CQ", "TERM", "DATA_TYPE", "ENUM_TYPE", "ENUM_VALUE", "OBJECT_TYPE", "PROPERTY", "LINK_TYPE", "AXIOM", "DATA_RULE");
+            "CQ", "TERM", "DATA_TYPE", "ENUM_TYPE", "ENUM_VALUE", "OBJECT_TYPE", "PROPERTY", "LINK_TYPE", "AXIOM", "DATA_RULE", "FIXTURE", "CQ_TEST");
 
     private final BranchMapper branchMapper;
     private final CommitMapper commitMapper;

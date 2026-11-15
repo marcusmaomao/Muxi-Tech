@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "required": ["displayName", "apiName", "language", "layer", "query", "assert"],
+  "properties": {
+    "displayName": { "type": "string", "minLength": 1 },
+    "apiName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+    "ownerUid": { "type": "string" },
+    "language": { "type": "string", "enum": ["SPARQL", "CYPHER"] },
+    "layer": { "type": "string", "enum": ["TBOX", "ABOX"] },
+    "query": { "type": "string", "minLength": 1 },
+    "fixtureUid": { "type": "string" },
+    "covers": { "type": "array", "items": { "type": "string" } },
+    "assert": { "type": "object" }
+  },
+  "additionalProperties": true
+}

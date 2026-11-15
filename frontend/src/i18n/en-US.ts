@@ -15,7 +15,7 @@ export default {
     modeling: "Modeling",
     versions: "Versions",
     canvas: "Canvas",
-    semantic: "Semantic",
+    semantic: "CQ tests",
     runtime: "Runtime",
     sync: "Sync",
     projects: "Projects",

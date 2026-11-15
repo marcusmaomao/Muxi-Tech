@@ -15,17 +15,19 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PayloadSchemaValidator {
-    private static final Map<String, String> FILES = Map.of(
-            "OBJECT_TYPE", "/schema/OBJECT_TYPE.schema.json",
-            "PROPERTY", "/schema/PROPERTY.schema.json",
-            "LINK_TYPE", "/schema/LINK_TYPE.schema.json",
-            "TERM", "/schema/TERM.schema.json",
-            "DATA_TYPE", "/schema/DATA_TYPE.schema.json",
-            "ENUM_TYPE", "/schema/ENUM_TYPE.schema.json",
-            "ENUM_VALUE", "/schema/ENUM_VALUE.schema.json",
-            "CQ", "/schema/CQ.schema.json",
-            "AXIOM", "/schema/AXIOM.schema.json",
-            "DATA_RULE", "/schema/DATA_RULE.schema.json");
+    private static final Map<String, String> FILES = Map.ofEntries(
+            Map.entry("OBJECT_TYPE", "/schema/OBJECT_TYPE.schema.json"),
+            Map.entry("PROPERTY", "/schema/PROPERTY.schema.json"),
+            Map.entry("LINK_TYPE", "/schema/LINK_TYPE.schema.json"),
+            Map.entry("TERM", "/schema/TERM.schema.json"),
+            Map.entry("DATA_TYPE", "/schema/DATA_TYPE.schema.json"),
+            Map.entry("ENUM_TYPE", "/schema/ENUM_TYPE.schema.json"),
+            Map.entry("ENUM_VALUE", "/schema/ENUM_VALUE.schema.json"),
+            Map.entry("CQ", "/schema/CQ.schema.json"),
+            Map.entry("AXIOM", "/schema/AXIOM.schema.json"),
+            Map.entry("DATA_RULE", "/schema/DATA_RULE.schema.json"),
+            Map.entry("CQ_TEST", "/schema/CQ_TEST.schema.json"),
+            Map.entry("FIXTURE", "/schema/FIXTURE.schema.json"));
 
     private final JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
 

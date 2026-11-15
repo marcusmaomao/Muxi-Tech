@@ -15,7 +15,7 @@ export default {
     modeling: "建模",
     versions: "版本",
     canvas: "画布",
-    semantic: "语义",
+    semantic: "能力问题",
     runtime: "运行时",
     sync: "同步",
     projects: "项目",

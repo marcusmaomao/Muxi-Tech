@@ -12,6 +12,7 @@ import FilesView from "@/views/basic/FilesView.vue";
 import ModelingView from "@/views/model/ModelingView.vue";
 import VersionView from "@/views/model/VersionView.vue";
 import CanvasView from "@/views/model/CanvasView.vue";
+import CqView from "@/views/model/CqView.vue";
 import ModelsView from "@/views/ai/ModelsView.vue";
 import AiModelingView from "@/views/ai/AiModelingView.vue";
 import SyncView from "@/views/runtime/SyncView.vue";
@@ -33,7 +34,9 @@ const router = createRouter({
         { path: "basic/files", name: "files", component: FilesView },
         { path: "model/versions", name: "versions", component: VersionView },
         { path: "model/canvas", name: "canvas-home", component: CanvasView },
+        { path: "model/cq", name: "cq-home", component: CqView },
         { path: "model/:projectId/canvas", name: "canvas", component: CanvasView },
+        { path: "model/:projectId/cq", name: "cq", component: CqView },
         { path: "model/:projectId", name: "modeling", component: ModelingView },
         { path: "ai/models", name: "models", component: ModelsView },
         { path: "ai/modeling", name: "ai-modeling", component: AiModelingView },

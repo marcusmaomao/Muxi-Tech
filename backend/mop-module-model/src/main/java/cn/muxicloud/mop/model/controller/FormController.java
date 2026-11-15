@@ -1,6 +1,8 @@
 package cn.muxicloud.mop.model.controller;
 
 import cn.muxicloud.mop.model.entity.ElementEntity;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import cn.muxicloud.mop.model.inherit.EffectiveProperties.Report;
 import cn.muxicloud.mop.model.service.ModelService;
 import cn.muxicloud.mop.security.AuthenticatedUser;
@@ -84,6 +86,36 @@ public class FormController {
     @RequiresPermission("model:form:edit")
     public ApiResponse<ElementEntity> createAxiom(@PathVariable Long branchId, @RequestBody JsonNode payload, Authentication authentication) {
         return add(branchId, "AXIOM", payload, authentication);
+    }
+
+    @PostMapping("/fixtures")
+    @RequiresPermission("model:form:edit")
+    public ApiResponse<ElementEntity> createFixture(@PathVariable Long branchId, @RequestBody JsonNode payload, Authentication authentication) {
+        return add(branchId, "FIXTURE", payload, authentication);
+    }
+
+    @GetMapping("/cqs/{cqUid}/tests")
+    @RequiresPermission("model:form:edit")
+    public ApiResponse<List<ElementEntity>> tests(@PathVariable Long branchId, @PathVariable String cqUid) {
+        return ApiResponse.ok(modelService.elements(branchId, "CQ_TEST").stream()
+                .filter(element -> cqUid.equals(element.getOwnerUid()))
+                .toList());
+    }
+
+    @PostMapping("/cqs/{cqUid}/tests")
+    @RequiresPermission("model:form:edit")
+    public ApiResponse<ElementEntity> createTest(@PathVariable Long branchId, @PathVariable String cqUid, @RequestBody JsonNode payload, Authentication authentication) {
+        ObjectNode body = payload != null && payload.isObject()
+                ? (ObjectNode) payload.deepCopy()
+                : com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+        body.put("ownerUid", cqUid);
+        return add(branchId, "CQ_TEST", body, authentication);
+    }
+
+    @PutMapping("/cqs/{uid}")
+    @RequiresPermission("model:form:edit")
+    public ApiResponse<ElementEntity> updateCq(@PathVariable Long branchId, @PathVariable String uid, @RequestBody JsonNode payload, Authentication authentication) {
+        return ApiResponse.ok(modelService.saveElement(branchId, "MODIFY", uid, "CQ", payload, user(authentication)));
     }
 
     @PostMapping("/data-rules")
