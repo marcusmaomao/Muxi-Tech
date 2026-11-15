@@ -1,6 +1,7 @@
 package cn.muxicloud.mop.model.controller;
 
 import cn.muxicloud.mop.model.entity.ElementEntity;
+import cn.muxicloud.mop.model.inherit.EffectiveProperties.Report;
 import cn.muxicloud.mop.model.service.ModelService;
 import cn.muxicloud.mop.security.AuthenticatedUser;
 import cn.muxicloud.mop.security.RequiresPermission;
@@ -8,6 +9,7 @@ import cn.muxicloud.mop.web.api.ApiResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -88,6 +90,12 @@ public class FormController {
     @RequiresPermission("model:form:edit")
     public ApiResponse<ElementEntity> createRule(@PathVariable Long branchId, @RequestBody JsonNode payload, Authentication authentication) {
         return add(branchId, "DATA_RULE", payload, authentication);
+    }
+
+    @GetMapping("/elements/{uid}/effective")
+    @RequiresPermission("model:form:edit")
+    public ApiResponse<Report> effective(@PathVariable Long branchId, @PathVariable String uid) {
+        return ApiResponse.ok(modelService.effective(branchId, uid));
     }
 
     @DeleteMapping("/elements/{uid}")

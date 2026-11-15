@@ -58,6 +58,23 @@ class OwlExporterTest {
         assertThat(new String(owl, StandardCharsets.UTF_8)).contains("Transformer");
     }
 
+    @Test
+    void twoParentsBecomeTwoSubClassOfAxioms() throws Exception {
+        CatalogSnapshot snapshot = new CatalogSnapshot(NAMESPACE, List.of(
+                element("asset", "OBJECT_TYPE", "Asset", null, "{\"displayName\":\"设备资产\",\"apiName\":\"Asset\"}"),
+                element("line", "OBJECT_TYPE", "Line", null, "{\"displayName\":\"线路\",\"apiName\":\"Line\"}"),
+                element("combo", "OBJECT_TYPE", "Combo", null, "{\"displayName\":\"组合设备\",\"apiName\":\"Combo\",\"parentUids\":[\"asset\",\"line\"]}")));
+        byte[] turtle = exporter.export(snapshot, "ttl").body();
+        String text = new String(turtle, StandardCharsets.UTF_8);
+        assertThat(text).contains("subClassOf");
+        assertThat(text).contains(NAMESPACE + "Combo");
+        assertThat(text).contains(NAMESPACE + "Asset");
+        assertThat(text).contains(NAMESPACE + "Line");
+        OWLOntology reloaded = OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(new ByteArrayInputStream(turtle));
+        OWLClass combo = classNamed(reloaded, NAMESPACE + "Combo");
+        assertThat(reloaded.subClassAxiomsForSubClass(combo)).hasSize(2);
+    }
+
     private static CatalogSnapshot sample() {
         return new CatalogSnapshot(NAMESPACE, List.of(
                 element("cq", "CQ", "whichAssets", null, "{\"displayName\":\"有哪些设备\",\"apiName\":\"whichAssets\"}"),

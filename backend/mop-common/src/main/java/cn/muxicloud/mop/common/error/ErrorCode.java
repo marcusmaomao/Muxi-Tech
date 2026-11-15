@@ -11,6 +11,7 @@ public enum ErrorCode {
     REFRESH_INVALID("MOP-1006", "刷新令牌无效", 401),
     SCHEMA_INVALID("MOP-2001", "JSON Schema 校验失败", 400),
     INHERITANCE_CYCLE("MOP-2003", "继承环", 400),
+    PROP_CONFLICT("MOP-2004", "同名属性冲突", 409),
     REFERENCED("MOP-2005", "元素仍被引用，不能删除", 409),
     MERGE_CONFLICT("MOP-2101", "合并冲突", 409),
     CQ_REQUIRED("MOP-2006", "对象或关系必须关联至少一个能力问题", 400),

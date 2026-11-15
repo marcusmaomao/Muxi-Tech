@@ -13,6 +13,11 @@ import cn.muxicloud.mop.model.api.BranchCatalog;
 import cn.muxicloud.mop.model.api.BranchCatalog.CatalogElement;
 import cn.muxicloud.mop.model.api.BranchCatalog.CatalogSnapshot;
 import cn.muxicloud.mop.model.form.ElementRules;
+import cn.muxicloud.mop.model.inherit.EffectiveProperties;
+import cn.muxicloud.mop.model.inherit.EffectiveProperties.NameConflict;
+import cn.muxicloud.mop.model.inherit.EffectiveProperties.PropNode;
+import cn.muxicloud.mop.model.inherit.EffectiveProperties.Report;
+import cn.muxicloud.mop.model.inherit.EffectiveProperties.TypeNode;
 import cn.muxicloud.mop.model.entity.ProjectEntity;
 import cn.muxicloud.mop.model.entity.ProjectMemberEntity;
 import cn.muxicloud.mop.model.mapper.BranchMapper;
@@ -481,7 +486,72 @@ public class ModelService implements BranchCatalog, ElementWriter {
         uniqueApi(branch.getId(), change.type(), change.apiName(), uid, owner);
         insertRow(project, branch, rev, uid, change.type(), change.apiName(), owner, payload, 0);
         insertRefs(project, branch, rev, uid, change.payload());
+        if ("OBJECT_TYPE".equals(change.type())) {
+            requireNoPropertyConflict(branch.getId(), uid);
+        }
+        if ("PROPERTY".equals(change.type()) && owner != null) {
+            requireNoPropertyConflict(branch.getId(), owner);
+        }
         return new Applied(uid, change.type(), op, before, payload, fields(before, payload));
+    }
+
+    public Report effective(Long branchId, String uid) {
+        requiredBranch(branchId);
+        if (reader.find(branchId, uid) == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        return report(branchId, uid);
+    }
+
+    private void requireNoPropertyConflict(Long branchId, String typeUid) {
+        List<TypeNode> types = typeNodes(branchId);
+        List<PropNode> properties = propertyNodes(branchId);
+        for (String affected : EffectiveProperties.affected(typeUid, types)) {
+            Report report = EffectiveProperties.of(affected, types, properties);
+            if (!report.conflicts().isEmpty()) {
+                NameConflict conflict = report.conflicts().get(0);
+                throw new MopException(ErrorCode.PROP_CONFLICT, "同名属性冲突：" + conflict.apiName(),
+                        java.util.Map.of("apiName", conflict.apiName(), "sources", conflict.sourceTypeApiNames()));
+            }
+        }
+    }
+
+    private Report report(Long branchId, String typeUid) {
+        return EffectiveProperties.of(typeUid, typeNodes(branchId), propertyNodes(branchId));
+    }
+
+    private List<TypeNode> typeNodes(Long branchId) {
+        List<TypeNode> types = new ArrayList<>();
+        for (ElementEntity row : reader.view(branchId)) {
+            if (!"OBJECT_TYPE".equals(row.getElementType())) {
+                continue;
+            }
+            JsonNode payload = readJson(row.getPayload());
+            List<String> parents = new ArrayList<>();
+            JsonNode values = payload == null ? null : payload.get("parentUids");
+            if (values != null && values.isArray()) {
+                for (JsonNode value : values) {
+                    if (value.isTextual()) {
+                        parents.add(value.asText());
+                    }
+                }
+            }
+            types.add(new TypeNode(row.getUid(), row.getApiName(), text(payload, "displayName"), parents));
+        }
+        return types;
+    }
+
+    private List<PropNode> propertyNodes(Long branchId) {
+        List<PropNode> properties = new ArrayList<>();
+        for (ElementEntity row : reader.view(branchId)) {
+            if (!"PROPERTY".equals(row.getElementType())) {
+                continue;
+            }
+            JsonNode payload = readJson(row.getPayload());
+            boolean override = payload != null && payload.path("override").asBoolean(false);
+            properties.add(new PropNode(row.getUid(), row.getApiName(), text(payload, "displayName"), row.getOwnerUid(), override));
+        }
+        return properties;
     }
 
     private void guardReferences(Long branchId, String uid) {

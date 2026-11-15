@@ -30,6 +30,10 @@ const downloadUrl = ref("");
 const branchName = ref("");
 const editUid = ref("");
 const editDescription = ref("");
+const parentUids = ref<string[]>([]);
+const overrideFlag = ref(false);
+const effectiveUid = ref("");
+const effective = ref<Array<{ uid: string; displayName: string; origin: string; sourceTypeName: string }>>([]);
 
 const kinds = [
   ["CQ", "能力问题"],
@@ -109,11 +113,15 @@ async function createElement() {
     }
     payload.cqUids = [cqUid.value];
   }
+  if (kind.value === "OBJECT_TYPE" && parentUids.value.length > 0) {
+    payload.parentUids = [...parentUids.value];
+  }
   if (kind.value === "ENUM_VALUE") {
     payload.ownerUid = ownerUid.value;
   }
   if (kind.value === "PROPERTY") {
     payload.ownerUid = ownerUid.value;
+    payload.override = overrideFlag.value;
     payload.required = true;
     payload.minCount = Number(minCount.value);
     payload.maxCount = Number(maxCount.value);
@@ -156,10 +164,29 @@ async function createElement() {
     await http.post(`/branches/${branchId.value}/${path[kind.value]}`, payload);
     displayName.value = "";
     apiName.value = "";
+    parentUids.value = [];
+    overrideFlag.value = false;
     message.value = "已提交";
     await load();
   } catch (caught) {
     message.value = caught instanceof ApiError ? caught.message : "提交失败";
+  }
+}
+
+async function loadEffective() {
+  message.value = "";
+  effective.value = [];
+  if (!effectiveUid.value) {
+    message.value = "请选择对象";
+    return;
+  }
+  try {
+    const response = await http.get<{ data: { properties: Array<{ uid: string; displayName: string; origin: string; sourceTypeName: string }> } }>(
+      `/branches/${branchId.value}/elements/${effectiveUid.value}/effective`,
+    );
+    effective.value = response.data.data?.properties ?? [];
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "读取失败";
   }
 }
 
@@ -207,6 +234,10 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
     <form class="form-grid" @submit.prevent="createElement">
       <span data-testid="element-name"><el-input v-model="displayName" placeholder="名称" /></span>
       <span data-testid="element-api"><el-input v-model="apiName" placeholder="API 名" /></span>
+      <select v-if="kind === 'OBJECT_TYPE'" v-model="parentUids" multiple data-testid="element-parents">
+        <option v-for="row in ofType('OBJECT_TYPE')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
+      </select>
+      <label v-if="kind === 'PROPERTY'" data-testid="element-override"><input v-model="overrideFlag" type="checkbox" /> 重定义继承属性</label>
       <select v-if="kind === 'OBJECT_TYPE' || kind === 'LINK_TYPE'" v-model="cqUid" data-testid="element-cq">
         <option value="">选择能力问题</option>
         <option v-for="row in ofType('CQ')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
@@ -244,6 +275,16 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
       <span data-testid="edit-description"><el-input v-model="editDescription" placeholder="对象说明" /></span>
       <el-button native-type="submit" data-testid="save-description">保存说明</el-button>
     </form>
+    <form class="form-grid" @submit.prevent="loadEffective">
+      <select v-model="effectiveUid" data-testid="effective-object">
+        <option value="">查看有效属性</option>
+        <option v-for="row in ofType('OBJECT_TYPE')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
+      </select>
+      <button type="submit" data-testid="load-effective">查看继承属性</button>
+    </form>
+    <ul data-testid="effective-list">
+      <li v-for="row in effective" :key="row.uid">{{ row.displayName }} · {{ row.origin === "OWN" ? "自身" : "继承自 " + row.sourceTypeName }}</li>
+    </ul>
   </main>
 </template>
 
@@ -252,6 +293,7 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
 .kind-row button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; }
 .kind-row button.on { background: var(--pine); color: #fff; }
 select { height: 32px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+select[multiple] { height: auto; min-height: 72px; }
 ul, .export { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 20px; }
 .export { white-space: pre-wrap; max-height: 280px; overflow: auto; }
 </style>
