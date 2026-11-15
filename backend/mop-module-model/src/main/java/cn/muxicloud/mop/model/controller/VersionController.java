@@ -75,6 +75,12 @@ public class VersionController {
         return ApiResponse.ok(diffs.diff(id, from, to));
     }
 
+    @GetMapping("/projects/{id}/merge-requests")
+    @RequiresPermission("model:form:edit")
+    public ApiResponse<List<MergeRequestEntity>> mergeRequests(@PathVariable Long id) {
+        return ApiResponse.ok(merges.list(id));
+    }
+
     @PostMapping("/projects/{id}/merge-requests")
     @RequiresPermission("model:form:edit")
     public ApiResponse<MergeRequestEntity> open(@PathVariable Long id, @RequestBody MergeRequest request, Authentication authentication) {

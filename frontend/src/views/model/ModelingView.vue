@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { ApiError, http } from "@/api/http";
 import { isApiName } from "@/utils/apiName";
@@ -27,6 +27,9 @@ const maxCount = ref("1");
 const defaultValue = ref("");
 const preview = ref("");
 const downloadUrl = ref("");
+const branchName = ref("");
+const editUid = ref("");
+const editDescription = ref("");
 
 const kinds = [
   ["CQ", "能力问题"],
@@ -53,14 +56,36 @@ const labelOf = (row: ElementRow) => {
 
 async function load() {
   const branches = await http.get<{ data: { id: string; name: string }[] }>(`/projects/${projectId.value}/branches`);
-  const main = (branches.data.data ?? []).find((branch) => branch.name === "main");
-  if (!main) {
+  const all = branches.data.data ?? [];
+  const requested = String(route.query.branch ?? "");
+  const chosen = all.find((branch) => branch.id === requested) ?? all.find((branch) => branch.name === "main");
+  if (!chosen) {
     message.value = "没有 main 分支";
     return;
   }
-  branchId.value = main.id;
+  branchId.value = chosen.id;
+  branchName.value = chosen.name;
   const elements = await http.get<{ data: ElementRow[] }>(`/branches/${branchId.value}/elements`);
   rows.value = elements.data.data ?? [];
+}
+
+async function saveDescription() {
+  message.value = "";
+  const row = rows.value.find((item) => item.uid === editUid.value && item.elementType === "OBJECT_TYPE");
+  if (!row || !editDescription.value.trim()) {
+    message.value = "请选择对象并填写说明";
+    return;
+  }
+  try {
+    const payload = JSON.parse(row.payload) as Record<string, unknown>;
+    payload.description = editDescription.value.trim();
+    await http.put(`/branches/${branchId.value}/object-types/${row.uid}`, payload);
+    editDescription.value = "";
+    message.value = "说明已保存";
+    await load();
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "保存失败";
+  }
 }
 
 async function createElement() {
@@ -159,15 +184,16 @@ watch(kind, () => {
   message.value = "";
 });
 
-onMounted(() => {
+watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}`, () => {
   void load();
-});
+}, { immediate: true });
 </script>
 
 <template>
   <main class="page" data-testid="modeling-page">
     <h1>表单建模</h1>
     <p class="lead">术语、类型、枚举、对象、属性和关系都写成一次提交。对象和关系要挂上能力问题。导出的 IRI 使用命名空间和 API 名。</p>
+    <p data-testid="modeling-branch">当前分支 {{ branchName }}</p>
     <div class="kind-row">
       <button type="button" data-testid="export-ttl" @click="exportOwl('ttl')">导出 Turtle</button>
       <button type="button" data-testid="export-rdfxml" @click="exportOwl('rdfxml')">导出 RDF/XML</button>
@@ -210,6 +236,14 @@ onMounted(() => {
     <ul data-testid="element-list">
       <li v-for="row in ofType(kind)" :key="row.uid">{{ labelOf(row) }} · {{ row.apiName }}</li>
     </ul>
+    <form class="form-grid" @submit.prevent="saveDescription">
+      <select v-model="editUid" data-testid="edit-object">
+        <option value="">选择要修改的对象</option>
+        <option v-for="row in ofType('OBJECT_TYPE')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
+      </select>
+      <span data-testid="edit-description"><el-input v-model="editDescription" placeholder="对象说明" /></span>
+      <el-button native-type="submit" data-testid="save-description">保存说明</el-button>
+    </form>
   </main>
 </template>
 

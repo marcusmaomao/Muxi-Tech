@@ -26,6 +26,7 @@ async function onLogout() {
       <nav>
         <router-link to="/workbench">{{ t("nav.workbench") }}</router-link>
         <router-link v-if="auth.can('model:form:edit')" to="/model">{{ t("nav.modeling") }}</router-link>
+        <router-link v-if="auth.can('model:form:edit')" to="/model/versions">{{ t("nav.versions") }}</router-link>
         <button class="nav" type="button" disabled>
           {{ t("nav.semantic") }} <span class="soon">{{ t("nav.soon") }}</span>
         </button>

@@ -13,6 +13,7 @@ export default {
   nav: {
     workbench: "Workbench",
     modeling: "Modeling",
+    versions: "Versions",
     semantic: "Semantic",
     runtime: "Runtime",
     sync: "Sync",

@@ -80,6 +80,9 @@ class VersionIntegrationTest {
         JsonNode opened = data(postJson(token, "/api/v1/projects/" + projectId + "/merge-requests", request));
         assertThat(opened.path("status").asText()).isEqualTo("CONFLICT");
         assertThat(opened.path("conflicts").asText()).contains("/description");
+        String listed = mvc.perform(get("/api/v1/projects/" + projectId + "/merge-requests").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(listed).contains("合并缺陷管理");
 
         ArrayNode resolutions = objectMapper.createArrayNode();
         resolutions.addObject().put("uid", typeUid).put("choice", "SOURCE");
