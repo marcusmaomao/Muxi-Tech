@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { LoginPage } from "../pages/login.page";
 
@@ -5,7 +6,7 @@ const username = process.env.E2E_USERNAME ?? "admin";
 const password = process.env.E2E_PASSWORD ?? "demo-admin";
 const stamp = Date.now().toString(36);
 
-test("modeling page exports turtle with a stable api-name iri", async ({ page }) => {
+test("E2E-05 exports downloadable Turtle with subclass axioms", async ({ page }) => {
   await new LoginPage(page).signIn(username, password);
   await page.locator("aside").getByRole("link", { name: "项目" }).click();
   await page.getByTestId("project-code").locator("input").fill(`owl-${stamp}`);
@@ -24,10 +25,42 @@ test("modeling page exports turtle with a stable api-name iri", async ({ page })
   await page.getByTestId("element-cq").selectOption({ label: "有哪些设备" });
   await page.getByTestId("create-element").click();
   await expect(page.getByTestId("element-list")).toContainText("变压器");
+  await page.getByTestId("element-name").locator("input").fill("设备资产");
+  await page.getByTestId("element-api").locator("input").fill("Asset");
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("设备资产");
+  await page.getByTestId("element-name").locator("input").fill("线路");
+  await page.getByTestId("element-api").locator("input").fill("Line");
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("线路");
+
+  await page.getByTestId("kind-AXIOM").click();
+  await page.getByTestId("element-name").locator("input").fill("变压器是资产");
+  await page.getByTestId("element-api").locator("input").fill("transformerIsAsset");
+  await page.getByTestId("element-owner").selectOption({ label: "变压器" });
+  await page.getByTestId("element-target").selectOption({ label: "设备资产" });
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("变压器是资产");
+  await page.getByTestId("element-name").locator("input").fill("线路是资产");
+  await page.getByTestId("element-api").locator("input").fill("lineIsAsset");
+  await page.getByTestId("element-owner").selectOption({ label: "线路" });
+  await page.getByTestId("element-target").selectOption({ label: "设备资产" });
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("线路是资产");
 
   await page.getByTestId("export-ttl").click();
+  await expect(page.getByTestId("export-preview")).toContainText("subClassOf");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByTestId("download-ttl").click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toContain(".ttl");
+  const filePath = await download.path();
+  const text = readFileSync(filePath ?? "", "utf8");
+  expect(text).toContain(`https://muxi.example/ont/${stamp}#`);
+  expect(text.match(/subClassOf/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+  expect(text).toContain("Transformer");
+  expect(text).toContain("Line");
   const preview = page.getByTestId("export-preview");
-  await expect(preview).toContainText(`https://muxi.example/ont/${stamp}#`);
-  await expect(preview).toContainText("Transformer");
+  await expect(preview).toContainText("subClassOf");
   await page.screenshot({ path: "test-results/export-turtle.png", fullPage: true });
 });

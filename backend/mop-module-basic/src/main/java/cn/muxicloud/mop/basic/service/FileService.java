@@ -70,6 +70,32 @@ public class FileService implements DocumentText {
         return FileView.from(entity);
     }
 
+    public FileView storeBytes(String filename, byte[] body, String contentType, Long projectId, AuthenticatedUser actor) {
+        if (body == null || body.length == 0) {
+            throw new MopException(ErrorCode.VALIDATION, "请选择文件", null);
+        }
+        if (body.length > MAX_BYTES) {
+            throw new MopException(ErrorCode.FILE_TOO_LARGE);
+        }
+        String name = filename(filename);
+        String type = contentType == null || contentType.isBlank() ? "application/octet-stream" : contentType;
+        TextExtractor.Extracted extracted = textExtractor.extract(body, name);
+        String key = actor.tenantId() + "/" + Ulids.newUlid() + "/" + name;
+        objectStore.put(key, body, type);
+        StoredFileEntity entity = new StoredFileEntity();
+        entity.setTenantId(actor.tenantId());
+        entity.setProjectId(projectId);
+        entity.setOriginalName(name);
+        entity.setContentType(type);
+        entity.setSizeBytes((long) body.length);
+        entity.setObjectKey(key);
+        entity.setTextStatus(extracted.status());
+        entity.setExtractedText(extracted.text());
+        entity.setCreatedBy(actor.userId());
+        fileMapper.insert(entity);
+        return FileView.from(entity);
+    }
+
     public void preview(Long id, OutputStream out) {
         objectStore.writeTo(required(id).getObjectKey(), out);
     }

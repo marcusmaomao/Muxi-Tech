@@ -5,7 +5,7 @@ const username = process.env.E2E_USERNAME ?? "admin";
 const password = process.env.E2E_PASSWORD ?? "demo-admin";
 const stamp = Date.now().toString(36);
 
-test("adopted AI candidates show up on the modeling page", async ({ page }) => {
+test("E2E-04 AI modeling shows progress and evidence, then adopt creates a commit", async ({ page }) => {
   await new LoginPage(page).signIn(username, password);
   await page.locator("aside").getByRole("link", { name: "项目" }).click();
   await page.getByTestId("project-code").locator("input").fill(`ai-${stamp}`);
@@ -39,8 +39,11 @@ test("adopted AI candidates show up on the modeling page", async ({ page }) => {
   await page.getByTestId("start-job").click();
   const list = page.getByTestId("candidate-list");
   await expect(list).toContainText("变压器", { timeout: 30_000 });
+  await expect(list).toContainText("变压器是电网的主设备");
+  await expect(page.getByTestId("ai-log")).toContainText("候选");
   await list.getByRole("listitem").filter({ hasText: "CQ" }).getByRole("button", { name: "采纳" }).click();
-  await list.getByRole("listitem").filter({ hasText: "OBJECT_TYPE" }).getByRole("button", { name: "采纳" }).click();
+  await page.getByTestId("adopt-all").click();
+  await expect(page.getByTestId("ai-status")).toContainText("已批量采纳");
   await page.locator("aside").getByRole("link", { name: "项目" }).click();
   await page.getByTestId(`model-ai-${stamp}`).click();
   await page.getByTestId("kind-OBJECT_TYPE").click();

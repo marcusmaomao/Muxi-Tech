@@ -68,6 +68,7 @@ mop:
     region: ${MOP_STORAGE_REGION:us-east-1}
   demo:
     seed: ${MOP_DEMO_SEED:false}
+    grid: ${MOP_DEMO_GRID:false}
     admin-username: ${MOP_DEMO_ADMIN_USERNAME:admin}
     admin-password: ${MOP_DEMO_ADMIN_PASSWORD:}
     admin-display-name: ${MOP_DEMO_ADMIN_DISPLAY_NAME:平台管理员}

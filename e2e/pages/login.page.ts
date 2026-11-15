@@ -16,5 +16,9 @@ export class LoginPage {
     await this.page.getByLabel("密码").fill(password);
     await this.page.getByTestId("captcha").locator("input").fill(body.data.debugCode);
     await this.page.getByRole("button", { name: "登录" }).click();
+    await Promise.race([
+      this.page.waitForURL("**/workbench"),
+      this.page.getByTestId("login-error").waitFor({ state: "visible" }),
+    ]);
   }
 }

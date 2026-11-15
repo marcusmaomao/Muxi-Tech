@@ -111,6 +111,16 @@ async function saveEdit(row: CandidateRow) {
   await refresh();
 }
 
+async function adoptAll() {
+  try {
+    await http.post(`/ai/jobs/${jobId.value}/adopt-all`);
+    message.value = "已批量采纳";
+    await refresh();
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "采纳失败";
+  }
+}
+
 async function adopt(row: CandidateRow) {
   try {
     await http.post(`/ai/candidates/${row.id}/adopt`);
@@ -152,6 +162,7 @@ onMounted(() => {
     </form>
     <p class="hint" data-testid="ai-status">{{ status }} {{ message }}</p>
     <pre class="log" data-testid="ai-log">{{ log.join("\n") }}</pre>
+    <button type="button" data-testid="adopt-all" :disabled="!jobId" @click="adoptAll">全部采纳</button>
     <ul data-testid="candidate-list">
       <li v-for="row in candidates" :key="row.id">
         <strong>{{ label(row) }}</strong>

@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "mop.demo")
 public class DemoSeedProperties {
     private boolean seed;
+    private boolean grid;
     private String adminUsername = "admin";
     private String adminPassword = "";
     private String adminDisplayName = "平台管理员";
@@ -17,6 +18,14 @@ public class DemoSeedProperties {
 
     public void setSeed(boolean seed) {
         this.seed = seed;
+    }
+
+    public boolean isGrid() {
+        return grid;
+    }
+
+    public void setGrid(boolean grid) {
+        this.grid = grid;
     }
 
     public String getAdminUsername() {

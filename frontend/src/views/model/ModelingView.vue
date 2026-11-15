@@ -26,12 +26,14 @@ const minCount = ref("1");
 const maxCount = ref("1");
 const defaultValue = ref("");
 const preview = ref("");
+const downloadUrl = ref("");
 
 const kinds = [
   ["CQ", "能力问题"],
   ["TERM", "术语"],
   ["DATA_TYPE", "类型"],
   ["ENUM_TYPE", "枚举"],
+  ["ENUM_VALUE", "枚举值"],
   ["OBJECT_TYPE", "对象"],
   ["PROPERTY", "属性"],
   ["LINK_TYPE", "关系"],
@@ -82,6 +84,9 @@ async function createElement() {
     }
     payload.cqUids = [cqUid.value];
   }
+  if (kind.value === "ENUM_VALUE") {
+    payload.ownerUid = ownerUid.value;
+  }
   if (kind.value === "PROPERTY") {
     payload.ownerUid = ownerUid.value;
     payload.required = true;
@@ -115,6 +120,7 @@ async function createElement() {
     TERM: "terms",
     DATA_TYPE: "data-types",
     ENUM_TYPE: "enums",
+    ENUM_VALUE: "enum-values",
     OBJECT_TYPE: "object-types",
     PROPERTY: "properties",
     LINK_TYPE: "link-types",
@@ -140,6 +146,10 @@ async function exportOwl(format: string) {
       responseType: "text",
     });
     preview.value = response.data;
+    if (downloadUrl.value) {
+      URL.revokeObjectURL(downloadUrl.value);
+    }
+    downloadUrl.value = URL.createObjectURL(new Blob([response.data], { type: "text/plain;charset=utf-8" }));
   } catch (caught) {
     message.value = caught instanceof ApiError ? caught.message : "导出失败";
   }
@@ -175,9 +185,9 @@ onMounted(() => {
         <option value="">选择能力问题</option>
         <option v-for="row in ofType('CQ')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
       </select>
-      <select v-if="kind === 'PROPERTY' || kind === 'LINK_TYPE' || kind === 'AXIOM' || kind === 'DATA_RULE'" v-model="ownerUid" data-testid="element-owner">
-        <option value="">{{ kind === 'PROPERTY' ? '所属对象' : '起点 / 对象' }}</option>
-        <option v-for="row in ofType('OBJECT_TYPE')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
+      <select v-if="kind === 'PROPERTY' || kind === 'LINK_TYPE' || kind === 'AXIOM' || kind === 'DATA_RULE' || kind === 'ENUM_VALUE'" v-model="ownerUid" data-testid="element-owner">
+        <option value="">{{ kind === 'ENUM_VALUE' ? '所属枚举' : kind === 'PROPERTY' ? '所属对象' : '起点 / 对象' }}</option>
+        <option v-for="row in ofType(kind === 'ENUM_VALUE' ? 'ENUM_TYPE' : 'OBJECT_TYPE')" :key="row.uid" :value="row.uid">{{ labelOf(row) }}</option>
       </select>
       <select v-if="kind === 'LINK_TYPE' || kind === 'AXIOM'" v-model="targetUid" data-testid="element-target">
         <option value="">终点</option>
@@ -195,6 +205,7 @@ onMounted(() => {
       <el-button native-type="submit" type="primary" data-testid="create-element">提交</el-button>
       <span class="hint" data-testid="form-error">{{ message }}</span>
     </form>
+    <a v-if="downloadUrl" :href="downloadUrl" download="ontology.ttl" data-testid="download-ttl">下载导出文件</a>
     <pre v-if="preview" class="export" data-testid="export-preview">{{ preview }}</pre>
     <ul data-testid="element-list">
       <li v-for="row in ofType(kind)" :key="row.uid">{{ labelOf(row) }} · {{ row.apiName }}</li>

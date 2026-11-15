@@ -89,9 +89,9 @@ class ExtractionIntegrationTest {
         long branchId = branch(token, "extract-grid");
         String root = "/api/v1/branches/" + branchId;
         String cq = uid(postJson(token, root + "/cqs", objectMapper.createObjectNode().put("displayName", "有哪些设备").put("apiName", "whichDevices")));
-        String equipment = object(token, root, "设备", "Equipment", cq);
+        String equipment = object(token, root, "变压器", "Transformer", cq);
         String station = object(token, root, "变电站", "Substation", cq);
-        property(token, root, "设备名", "equipmentName", equipment);
+        property(token, root, "变压器名", "transformerName", equipment);
         property(token, root, "站名", "stationName", station);
         link(token, root, equipment, station, cq);
         long modelId = model(token);
@@ -109,7 +109,7 @@ class ExtractionIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("data");
         assertThat(published.path("inserted").asInt()).isEqualTo(2);
         assertThat(published.path("linked").asInt()).isEqualTo(1);
-        JsonNode neighbors = objectMapper.readTree(mvc.perform(get("/api/v1/graph/neighbors").param("type", "Equipment").param("pk", "一号变压器").header("Authorization", "Bearer " + token))
+        JsonNode neighbors = objectMapper.readTree(mvc.perform(get("/api/v1/graph/neighbors").param("type", "Transformer").param("pk", "一号变压器").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("data");
         assertThat(neighbors.toString()).contains("城东站").contains("一号变压器安装在城东站");
 
@@ -117,7 +117,7 @@ class ExtractionIntegrationTest {
                         .content("{\"code\":\"extract-other\",\"name\":\"其他\",\"adminUsername\":\"extract-other\",\"adminPassword\":\"other-pass-1\",\"adminDisplayName\":\"其他\"}"))
                 .andExpect(status().isOk());
         String other = token("extract-other", "other-pass-1");
-        assertThat(objectMapper.readTree(mvc.perform(get("/api/v1/graph/objects").param("type", "Equipment").header("Authorization", "Bearer " + other))
+        assertThat(objectMapper.readTree(mvc.perform(get("/api/v1/graph/objects").param("type", "Transformer").header("Authorization", "Bearer " + other))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("data")).isEmpty();
     }
 
