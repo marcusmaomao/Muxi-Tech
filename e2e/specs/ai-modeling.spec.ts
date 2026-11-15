@@ -42,6 +42,7 @@ test("E2E-04 AI modeling shows progress and evidence, then adopt creates a commi
   await expect(list).toContainText("变压器是电网的主设备");
   await expect(page.getByTestId("ai-log")).toContainText("候选");
   await list.getByRole("listitem").filter({ hasText: "CQ" }).getByRole("button", { name: "采纳" }).click();
+  await expect(page.getByTestId("ai-status")).toContainText("已采纳");
   await page.getByTestId("adopt-all").click();
   await expect(page.getByTestId("ai-status")).toContainText("已批量采纳");
   await page.locator("aside").getByRole("link", { name: "项目" }).click();

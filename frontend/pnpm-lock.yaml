@@ -11,6 +11,27 @@ importers:
       '@antv/g6':
         specifier: ^5.0.49
         version: 5.1.1
+      '@antv/x6':
+        specifier: ^2.18.1
+        version: 2.18.1
+      '@antv/x6-plugin-history':
+        specifier: ^2.2.4
+        version: 2.2.4(@antv/x6@2.18.1)
+      '@antv/x6-plugin-keyboard':
+        specifier: ^2.2.3
+        version: 2.2.3(@antv/x6@2.18.1)
+      '@antv/x6-plugin-minimap':
+        specifier: ^2.0.7
+        version: 2.0.7(@antv/x6@2.18.1)
+      '@antv/x6-plugin-selection':
+        specifier: ^2.2.2
+        version: 2.2.2(@antv/x6@2.18.1)
+      '@antv/x6-plugin-snapline':
+        specifier: ^2.1.7
+        version: 2.1.7(@antv/x6@2.18.1)
+      '@antv/x6-plugin-stencil':
+        specifier: ^2.1.5
+        version: 2.1.5(@antv/x6@2.18.1)
       '@fontsource/noto-sans-sc':
         specifier: ^5.2.6
         version: 5.3.1
@@ -20,6 +41,9 @@ importers:
       element-plus:
         specifier: ^2.9.1
         version: 2.14.8(vue@3.5.45(typescript@5.9.3))
+      elkjs:
+        specifier: ^0.12.1
+        version: 0.12.1
       pinia:
         specifier: ^2.3.0
         version: 2.3.1(typescript@5.9.3)(vue@3.5.45(typescript@5.9.3))
@@ -119,6 +143,50 @@ packages:
 
   '@antv/vendor@1.0.11':
     resolution: {integrity: sha512-LmhPEQ+aapk3barntaiIxJ5VHno/Tyab2JnfdcPzp5xONh/8VSfed4bo/9xKo5HcUAEydko38vYLfj6lJliLiw==}
+
+  '@antv/x6-common@2.0.17':
+    resolution: {integrity: sha512-37g7vmRkNdYzZPdwjaMSZEGv/MMH0S4r70/Jwoab1mioycmuIBN73iyziX8m56BvJSDucZ3J/6DU07otWqzS6A==}
+
+  '@antv/x6-geometry@2.0.5':
+    resolution: {integrity: sha512-MId6riEQkxphBpVeTcL4ZNXL4lScyvDEPLyIafvWMcWNTGK0jgkK7N20XSzqt8ltJb0mGUso5s56mrk8ysHu2A==}
+
+  '@antv/x6-plugin-dnd@2.1.1':
+    resolution: {integrity: sha512-v0szzik1RkadPDn4Qi5mOSaB2AeI78D40/YuCYbPVzplG+HydGsHwO3MLTgJPQ+R5n0eM0W5F850p1VfTOHR7g==}
+    peerDependencies:
+      '@antv/x6': ^2.x
+
+  '@antv/x6-plugin-history@2.2.4':
+    resolution: {integrity: sha512-9gHHvEW4Fla+1hxUV49zNgJyIMoV9CjVM52MrFgAJcvyRn1Kvxz4MfxiKlG+DEZUs+/zvfjl9pS6gJOd8laRkg==}
+    peerDependencies:
+      '@antv/x6': ^2.x
+
+  '@antv/x6-plugin-keyboard@2.2.3':
+    resolution: {integrity: sha512-pnCIC+mDyKKfkcDyLePfGxKVIqXBcldTgannITkHC1kc0IafRS1GMvzpvuDGrM5haRYd6Nwz8kjkJyHkJE4GPA==}
+    peerDependencies:
+      '@antv/x6': ^2.x
+
+  '@antv/x6-plugin-minimap@2.0.7':
+    resolution: {integrity: sha512-8zzESCx0jguFPCOKCA0gPFb6JmRgq81CXXtgJYe34XhySdZ6PB23I5Po062lNsEuTjTjnzli4lju8vvU+jzlGw==}
+    peerDependencies:
+      '@antv/x6': ^2.x
+
+  '@antv/x6-plugin-selection@2.2.2':
+    resolution: {integrity: sha512-s2gtR9Onlhr7HOHqyqg0d+4sG76JCcQEbvrZZ64XmSChlvieIPlC3YtH4dg1KMNhYIuBmBmpSum6S0eVTEiPQw==}
+    peerDependencies:
+      '@antv/x6': ^2.x
+
+  '@antv/x6-plugin-snapline@2.1.7':
+    resolution: {integrity: sha512-AsysoCb9vES0U2USNhEpYuO/W8I0aYfkhlbee5Kt4NYiMfQfZKQyqW/YjDVaS2pm38C1NKu1LdPVk/BBr4CasA==}
+    peerDependencies:
+      '@antv/x6': ^2.x
+
+  '@antv/x6-plugin-stencil@2.1.5':
+    resolution: {integrity: sha512-q7wx7XRMFkUKPv3WsHkvZda6O1GW+6q6H/+c1lcrwlQoEKOFv1Djc4Hu2J4SGhV2z98P2JLfVJiT5m7YoOoCHw==}
+    peerDependencies:
+      '@antv/x6': ^2.x
+
+  '@antv/x6@2.18.1':
+    resolution: {integrity: sha512-FkWdbLOpN9J7dfJ+kiBxzowSx2N6syBily13NMVdMs+wqC6Eo5sLXWCZjQHateTFWgFw7ZGi2y9o3Pmdov1sXw==}
 
   '@asamuzakjp/css-color@3.2.0':
     resolution: {integrity: sha512-K1A6z8tS3XsmCMM86xoWdn7Fkdn9m6RSVtocUrJYIwZnFVkng/PvkEoWtOWmP+Scc6saYWHWZYbndEEXxl24jw==}
@@ -1123,6 +1191,9 @@ packages:
     peerDependencies:
       vue: ^3.3.7
 
+  elkjs@0.12.1:
+    resolution: {integrity: sha512-IhMYKHE4S2vtx0QrhBP3lYOIKDeIiJXBrdq9MGYkuB8ZHqhrBnHNfSUndjXFewrX1CPK8chwq+2NA0K0hliYuw==}
+
   entities@6.0.1:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
@@ -1526,6 +1597,9 @@ packages:
   ml-matrix@6.15.1:
     resolution: {integrity: sha512-DUVxsB+hsXhha9FTp6kQiy6UopxW9F7IXsbWhYVTHRfKdb0UimLYUDYqLQ1WwGPERnp8T5Usbwb47xxkAzSfOg==}
 
+  mousetrap@1.6.5:
+    resolution: {integrity: sha512-QNo4kEepaIBwiT8CDhP98umTetp+JNfQYBWvC1pc6/OAibuXtRcxZ58Qz8skvEHYvURne/7R8T5VoOI7rDsEUA==}
+
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
@@ -1782,6 +1856,10 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
+
+  utility-types@3.11.0:
+    resolution: {integrity: sha512-6Z7Ma2aVEWisaL6TvBCy7P8rm2LQoPv6dJ7ecIaIixHcwfbJ0x7mWdbcwlIM5IGQxPZSFYeqRCqlOOeKoJYMkw==}
+    engines: {node: '>= 4'}
 
   utrie@1.0.2:
     resolution: {integrity: sha512-1MLa5ouZiOmQzUbjbu9VmjLzn1QLXBhwpUa7kdLUQK+KQ5KA9I1vk5U4YHe/X2Ch7PYnJfWuWT+VbuxbGwljhw==}
@@ -2123,6 +2201,49 @@ snapshots:
       d3-shape: 3.2.1
       d3-time: 3.1.1
       d3-timer: 3.0.2
+
+  '@antv/x6-common@2.0.17':
+    dependencies:
+      lodash-es: 4.18.1
+      utility-types: 3.11.0
+
+  '@antv/x6-geometry@2.0.5': {}
+
+  '@antv/x6-plugin-dnd@2.1.1(@antv/x6@2.18.1)':
+    dependencies:
+      '@antv/x6': 2.18.1
+
+  '@antv/x6-plugin-history@2.2.4(@antv/x6@2.18.1)':
+    dependencies:
+      '@antv/x6': 2.18.1
+
+  '@antv/x6-plugin-keyboard@2.2.3(@antv/x6@2.18.1)':
+    dependencies:
+      '@antv/x6': 2.18.1
+      mousetrap: 1.6.5
+
+  '@antv/x6-plugin-minimap@2.0.7(@antv/x6@2.18.1)':
+    dependencies:
+      '@antv/x6': 2.18.1
+
+  '@antv/x6-plugin-selection@2.2.2(@antv/x6@2.18.1)':
+    dependencies:
+      '@antv/x6': 2.18.1
+
+  '@antv/x6-plugin-snapline@2.1.7(@antv/x6@2.18.1)':
+    dependencies:
+      '@antv/x6': 2.18.1
+
+  '@antv/x6-plugin-stencil@2.1.5(@antv/x6@2.18.1)':
+    dependencies:
+      '@antv/x6': 2.18.1
+      '@antv/x6-plugin-dnd': 2.1.1(@antv/x6@2.18.1)
+
+  '@antv/x6@2.18.1':
+    dependencies:
+      '@antv/x6-common': 2.0.17
+      '@antv/x6-geometry': 2.0.5
+      utility-types: 3.11.0
 
   '@asamuzakjp/css-color@3.2.0':
     dependencies:
@@ -3036,6 +3157,8 @@ snapshots:
       vue: 3.5.45(typescript@5.9.3)
       vue-component-type-helpers: 3.3.14
 
+  elkjs@0.12.1: {}
+
   entities@6.0.1: {}
 
   entities@7.0.1: {}
@@ -3481,6 +3604,8 @@ snapshots:
       is-any-array: 3.0.0
       ml-array-rescale: 2.0.0
 
+  mousetrap@1.6.5: {}
+
   ms@2.1.3: {}
 
   muggle-string@0.4.1: {}
@@ -3718,6 +3843,8 @@ snapshots:
       punycode: 2.3.1
 
   util-deprecate@1.0.2: {}
+
+  utility-types@3.11.0: {}
 
   utrie@1.0.2:
     dependencies:
