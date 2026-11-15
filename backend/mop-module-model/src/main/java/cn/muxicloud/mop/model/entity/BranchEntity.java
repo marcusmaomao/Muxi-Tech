@@ -13,6 +13,8 @@ public class BranchEntity {
     private Long tenantId;
     private Long projectId;
     private String name;
+    private Long parentBranchId;
+    private Long forkRev;
     private Long headRev;
     @TableField("protected")
     private Integer protectedFlag;
@@ -28,6 +30,10 @@ public class BranchEntity {
     public void setProjectId(Long projectId) { this.projectId = projectId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public Long getParentBranchId() { return parentBranchId; }
+    public void setParentBranchId(Long parentBranchId) { this.parentBranchId = parentBranchId; }
+    public Long getForkRev() { return forkRev; }
+    public void setForkRev(Long forkRev) { this.forkRev = forkRev; }
     public Long getHeadRev() { return headRev; }
     public void setHeadRev(Long headRev) { this.headRev = headRev; }
     public Integer getProtectedFlag() { return protectedFlag; }

@@ -94,6 +94,7 @@ services:
       MOP_DATASOURCE_SECRET: ${MOP_DATASOURCE_SECRET}
       MOP_AI_KEY_SECRET: ${MOP_AI_KEY_SECRET:-local-dev-ai-key-secret-32b}
       MOP_AI_RATE_LIMIT: redis
+      MOP_MODEL_VIEW_CACHE: redis
       REDIS_HOST: redis
       MOP_STORAGE_ENDPOINT: http://minio:9000
       MOP_STORAGE_ACCESS_KEY: ${MINIO_USER}

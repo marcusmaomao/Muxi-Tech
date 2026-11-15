@@ -13,7 +13,11 @@ public class CommitEntity {
     private Long projectId;
     private Long branchId;
     private Long rev;
+    private Long parentRev;
+    private Long mergeSourceBranchId;
+    private Long mergeSourceRev;
     private String message;
+    private String source;
     private Integer changeCount;
     private Long authorId;
     private LocalDateTime createdAt;
@@ -28,8 +32,16 @@ public class CommitEntity {
     public void setBranchId(Long branchId) { this.branchId = branchId; }
     public Long getRev() { return rev; }
     public void setRev(Long rev) { this.rev = rev; }
+    public Long getParentRev() { return parentRev; }
+    public void setParentRev(Long parentRev) { this.parentRev = parentRev; }
+    public Long getMergeSourceBranchId() { return mergeSourceBranchId; }
+    public void setMergeSourceBranchId(Long mergeSourceBranchId) { this.mergeSourceBranchId = mergeSourceBranchId; }
+    public Long getMergeSourceRev() { return mergeSourceRev; }
+    public void setMergeSourceRev(Long mergeSourceRev) { this.mergeSourceRev = mergeSourceRev; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
     public Integer getChangeCount() { return changeCount; }
     public void setChangeCount(Integer changeCount) { this.changeCount = changeCount; }
     public Long getAuthorId() { return authorId; }

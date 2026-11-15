@@ -66,6 +66,8 @@ mop:
     secret-key: ${MOP_STORAGE_SECRET_KEY:}
     bucket: ${MOP_STORAGE_BUCKET:mop}
     region: ${MOP_STORAGE_REGION:us-east-1}
+  model:
+    view-cache: ${MOP_MODEL_VIEW_CACHE:memory}
   demo:
     seed: ${MOP_DEMO_SEED:false}
     grid: ${MOP_DEMO_GRID:false}
