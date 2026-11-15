@@ -10,5 +10,5 @@ public interface BranchCatalog {
 
     record CatalogElement(String uid, String type, String apiName, String ownerUid, String payload) {}
 
-    record CatalogSnapshot(String namespace, List<CatalogElement> elements) {}
+    record CatalogSnapshot(String namespace, List<CatalogElement> elements, long projectId) {}
 }
