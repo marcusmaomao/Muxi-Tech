@@ -19,6 +19,7 @@ export default {
     datasources: "Datasources",
     files: "Files",
     models: "Models",
+    aiModeling: "AI modeling",
     system: "System",
     soon: "Soon",
   },

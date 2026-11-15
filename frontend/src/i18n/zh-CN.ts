@@ -19,6 +19,7 @@ export default {
     datasources: "数据源",
     files: "文件",
     models: "模型",
+    aiModeling: "AI 建模",
     system: "系统",
     users: "用户",
     roles: "角色",

@@ -1,0 +1,20 @@
+{
+  "priority": 2,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/chat/completions",
+    "bodyPatterns": [{ "contains": "轮次：3" }]
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "choices": [{
+        "message": {
+          "role": "assistant",
+          "content": "{\"candidates\":[{\"type\":\"PROPERTY\",\"apiName\":\"ratedVoltage\",\"displayName\":\"额定电压\",\"ownerApiName\":\"Transformer\",\"minCount\":1,\"maxCount\":1,\"defaultValue\":\"10\",\"evidence\":\"额定电压\",\"confidence\":0.8}]}"
+        }
+      }]
+    }
+  }
+}

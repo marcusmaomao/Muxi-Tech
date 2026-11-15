@@ -1,5 +1,6 @@
 package cn.muxicloud.mop.basic.service;
 
+import cn.muxicloud.mop.basic.api.DocumentText;
 import cn.muxicloud.mop.basic.entity.StoredFileEntity;
 import cn.muxicloud.mop.basic.mapper.StoredFileMapper;
 import cn.muxicloud.mop.basic.parse.TextExtractor;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
-public class FileService {
+public class FileService implements DocumentText {
     static final long MAX_BYTES = 50L * 1024 * 1024;
 
     private final StoredFileMapper fileMapper;
@@ -79,6 +80,18 @@ public class FileService {
             throw new MopException(ErrorCode.NOT_FOUND);
         }
         return entity;
+    }
+
+    @Override
+    public Extracted read(long fileId) {
+        StoredFileEntity entity = required(fileId);
+        String stored = entity.getExtractedText() == null ? "" : entity.getExtractedText();
+        TextExtractor.Extracted again = textExtractor.extract(stored.getBytes(java.nio.charset.StandardCharsets.UTF_8), entity.getOriginalName());
+        String text = "OK".equals(again.status()) && again.text() != null && !again.text().isBlank() ? again.text() : stored;
+        if (text.isBlank()) {
+            throw new MopException(ErrorCode.VALIDATION, "文件没有可用文本", null);
+        }
+        return new Extracted(entity.getId(), entity.getOriginalName(), text.trim());
     }
 
     public TextView text(Long id) {

@@ -11,6 +11,7 @@ import DatasourcesView from "@/views/basic/DatasourcesView.vue";
 import FilesView from "@/views/basic/FilesView.vue";
 import ModelingView from "@/views/model/ModelingView.vue";
 import ModelsView from "@/views/ai/ModelsView.vue";
+import AiModelingView from "@/views/ai/AiModelingView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,6 +28,7 @@ const router = createRouter({
         { path: "basic/files", name: "files", component: FilesView },
         { path: "model/:projectId", name: "modeling", component: ModelingView },
         { path: "ai/models", name: "models", component: ModelsView },
+        { path: "ai/modeling", name: "ai-modeling", component: AiModelingView },
         { path: "system/users", name: "users", component: UsersView },
         { path: "system/roles", component: SimpleListView, props: { kind: "roles" } },
         { path: "system/menus", component: SimpleListView, props: { kind: "menus" } },

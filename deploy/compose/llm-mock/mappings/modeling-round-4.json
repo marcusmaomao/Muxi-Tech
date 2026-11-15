@@ -1,0 +1,20 @@
+{
+  "priority": 2,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/chat/completions",
+    "bodyPatterns": [{ "contains": "轮次：4" }]
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "choices": [{
+        "message": {
+          "role": "assistant",
+          "content": "{\"candidates\":[{\"type\":\"DATA_RULE\",\"apiName\":\"voltageRange\",\"displayName\":\"电压范围\",\"kind\":\"RANGE\",\"targetApiName\":\"Transformer\",\"min\":0,\"max\":1000,\"evidence\":\"额定电压\",\"confidence\":0.7}]}"
+        }
+      }]
+    }
+  }
+}
