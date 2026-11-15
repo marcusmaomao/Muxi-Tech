@@ -121,6 +121,17 @@ public class GraphWriter {
         }
     }
 
+    public List<TypedObject> objectsIn(List<String> types) {
+        if (types == null || types.isEmpty()) {
+            return List.of();
+        }
+        types.forEach(GraphWriter::api);
+        try (Session session = driver.session()) {
+            return session.run(TenantCypherGuard.READ_OBJECTS_IN, parameters("tenant", tenant(), "types", types)).list(record ->
+                    new TypedObject(record.get("type").asString(), record.get("pk").asString(), props(record.get("propsJson").asString(null))));
+        }
+    }
+
     private Map<String, String> props(String raw) {
         Map<String, String> props = new LinkedHashMap<>();
         if (raw == null || raw.isBlank()) {
@@ -157,6 +168,8 @@ public class GraphWriter {
     public record WriteCount(int inserted, int updated) {}
 
     public record GraphObject(String pk, Map<String, String> props) {}
+
+    public record TypedObject(String type, String pk, Map<String, String> props) {}
 
     public record Neighbor(String link, String type, String pk, Map<String, String> props) {}
 

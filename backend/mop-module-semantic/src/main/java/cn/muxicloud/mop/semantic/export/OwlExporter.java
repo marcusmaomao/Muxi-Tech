@@ -40,13 +40,23 @@ public class OwlExporter {
             default -> throw new MopException(ErrorCode.VALIDATION, "导出格式只支持 ttl、rdfxml、owl", null);
         };
         try {
-            OWLOntology ontology = build(snapshot);
+            OWLOntology ontology = ontology(snapshot);
             if (documentFormat.isPrefixOWLDocumentFormat()) {
                 documentFormat.asPrefixOWLDocumentFormat().setDefaultPrefix(snapshot.namespace());
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             ontology.getOWLOntologyManager().saveOntology(ontology, documentFormat, out);
             return new OwlDocument(key, mediaType(key), extension(key), out.toByteArray());
+        } catch (MopException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.INTERNAL, "本体导出失败", null);
+        }
+    }
+
+    public OWLOntology ontology(CatalogSnapshot snapshot) {
+        try {
+            return build(snapshot);
         } catch (MopException ex) {
             throw ex;
         } catch (Exception ex) {

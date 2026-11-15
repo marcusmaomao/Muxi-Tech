@@ -37,6 +37,13 @@ public final class TenantCypherGuard {
             ORDER BY pk
             """;
 
+    public static final String READ_OBJECTS_IN = """
+            MATCH (n:MopObject)
+            WHERE n._t = $tenant AND n._type IN $types
+            RETURN n._type AS type, n._pk AS pk, n.propsJson AS propsJson
+            ORDER BY type, pk
+            """;
+
     public static final String READ_NEIGHBORS = """
             MATCH (n:MopObject { _t: $tenant, _type: $type, _pk: $pk })
             OPTIONAL MATCH (n)-[r:MOP_LINK { _t: $tenant }]-(m:MopObject { _t: $tenant })

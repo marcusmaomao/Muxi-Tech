@@ -32,6 +32,10 @@ const shapesUrl = ref("");
 const axiomKind = ref("SUBCLASS");
 const shaclData = ref("");
 const shaclReport = ref("");
+const reasonReport = ref("");
+const reasonType = ref("");
+const includeSubtypes = ref(true);
+const objectHits = ref<Array<{ type: string; pk: string }>>([]);
 const branchName = ref("");
 const editUid = ref("");
 const editDescription = ref("");
@@ -39,6 +43,11 @@ const parentUids = ref<string[]>([]);
 const overrideFlag = ref(false);
 const effectiveUid = ref("");
 const effective = ref<Array<{ uid: string; displayName: string; origin: string; sourceTypeName: string }>>([]);
+
+interface ReasonReport {
+  unsatisfiable: Array<{ apiName: string; displayName: string }>;
+  types: Array<{ apiName: string; displayName: string; directSuperClasses: string[] }>;
+}
 
 const kinds = [
   ["CQ", "能力问题"],
@@ -225,6 +234,43 @@ async function validateShapes() {
   }
 }
 
+async function runReason() {
+  message.value = "";
+  reasonReport.value = "";
+  try {
+    const response = await http.post<{ data: ReasonReport }>(`/branches/${branchId.value}/reason`, { reasoner: "ELK" });
+    const report = response.data.data;
+    const names = new Map((report?.types ?? []).map((type) => [type.apiName, type.displayName || type.apiName]));
+    const bad = (report?.unsatisfiable ?? []).map((type) => type.displayName || type.apiName);
+    const lines = [bad.length ? `不可满足：${bad.join("、")}` : "没有不可满足的类"];
+    for (const type of report?.types ?? []) {
+      if (type.directSuperClasses.length > 0) {
+        lines.push(`${type.displayName || type.apiName} ⊑ ${type.directSuperClasses.map((api) => names.get(api) ?? api).join("、")}`);
+      }
+    }
+    reasonReport.value = lines.join("\n");
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "推理失败";
+  }
+}
+
+async function queryObjects() {
+  message.value = "";
+  objectHits.value = [];
+  if (!reasonType.value) {
+    message.value = "请选择对象类型";
+    return;
+  }
+  try {
+    const response = await http.get<{ data: Array<{ type: string; pk: string }> }>(`/branches/${branchId.value}/objects`, {
+      params: { type: reasonType.value, includeSubtypes: includeSubtypes.value },
+    });
+    objectHits.value = response.data.data ?? [];
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "查询失败";
+  }
+}
+
 async function exportOwl(format: string) {
   message.value = "";
   try {
@@ -261,6 +307,7 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
       <button type="button" data-testid="export-rdfxml" @click="exportOwl('rdfxml')">导出 RDF/XML</button>
       <button type="button" data-testid="export-owl" @click="exportOwl('owl')">导出 OWL</button>
       <button type="button" data-testid="export-shapes" @click="exportShapes">导出 SHACL</button>
+      <button type="button" data-testid="run-reason" @click="runReason">ELK 分类</button>
     </div>
     <div class="kind-row">
       <button v-for="item in kinds" :key="item[0]" type="button" :data-testid="`kind-${item[0]}`" :class="{ on: kind === item[0] }" @click="kind = item[0]">
@@ -312,6 +359,18 @@ watch(() => `${route.params.projectId ?? ""}:${String(route.query.branch ?? "")}
       <el-button native-type="submit" data-testid="shacl-validate">校验数据</el-button>
       <pre v-if="shaclReport" data-testid="shacl-report">{{ shaclReport }}</pre>
     </form>
+    <pre v-if="reasonReport" data-testid="reason-report">{{ reasonReport }}</pre>
+    <form class="form-grid" @submit.prevent="queryObjects">
+      <select v-model="reasonType" data-testid="reason-type">
+        <option value="">按类型查对象</option>
+        <option v-for="row in ofType('OBJECT_TYPE')" :key="row.uid" :value="row.apiName">{{ labelOf(row) }}</option>
+      </select>
+      <label data-testid="include-subtypes"><input v-model="includeSubtypes" type="checkbox" /> 包含子类</label>
+      <button type="submit" data-testid="query-objects">查询对象</button>
+    </form>
+    <ul data-testid="object-hits">
+      <li v-for="row in objectHits" :key="`${row.type}-${row.pk}`">{{ row.type }} · {{ row.pk }}</li>
+    </ul>
     <ul data-testid="element-list">
       <li v-for="row in ofType(kind)" :key="row.uid">{{ labelOf(row) }} · {{ row.apiName }}</li>
     </ul>
