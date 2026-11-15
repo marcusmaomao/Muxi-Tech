@@ -9,6 +9,7 @@ import LogsView from "@/views/system/LogsView.vue";
 import ProjectsView from "@/views/basic/ProjectsView.vue";
 import DatasourcesView from "@/views/basic/DatasourcesView.vue";
 import FilesView from "@/views/basic/FilesView.vue";
+import ModelingView from "@/views/model/ModelingView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -23,6 +24,7 @@ const router = createRouter({
         { path: "basic/projects", name: "projects", component: ProjectsView },
         { path: "basic/datasources", name: "datasources", component: DatasourcesView },
         { path: "basic/files", name: "files", component: FilesView },
+        { path: "model/:projectId", name: "modeling", component: ModelingView },
         { path: "system/users", name: "users", component: UsersView },
         { path: "system/roles", component: SimpleListView, props: { kind: "roles" } },
         { path: "system/menus", component: SimpleListView, props: { kind: "menus" } },

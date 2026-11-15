@@ -13,6 +13,7 @@ public class ProjectEntity extends BaseEntity {
     private String scopeExclude;
     private String description;
     private Long ownerUserId;
+    private Integer requireCqLink;
     private Long headRev;
 
     public String getCode() { return code; }
@@ -31,6 +32,8 @@ public class ProjectEntity extends BaseEntity {
     public void setDescription(String description) { this.description = description; }
     public Long getOwnerUserId() { return ownerUserId; }
     public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
+    public Integer getRequireCqLink() { return requireCqLink; }
+    public void setRequireCqLink(Integer requireCqLink) { this.requireCqLink = requireCqLink; }
     public Long getHeadRev() { return headRev; }
     public void setHeadRev(Long headRev) { this.headRev = headRev; }
 }

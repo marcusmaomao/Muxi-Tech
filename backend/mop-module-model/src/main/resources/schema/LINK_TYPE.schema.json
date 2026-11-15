@@ -5,7 +5,10 @@
     "displayName": { "type": "string", "minLength": 1 },
     "apiName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
     "sourceUid": { "type": "string", "minLength": 26, "maxLength": 26 },
-    "targetUid": { "type": "string", "minLength": 26, "maxLength": 26 }
+    "targetUid": { "type": "string", "minLength": 26, "maxLength": 26 },
+    "cardinality": { "type": "string", "enum": ["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_ONE", "MANY_TO_MANY"] },
+    "invertible": { "type": "boolean" },
+    "cqUids": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": true
 }

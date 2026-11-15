@@ -77,6 +77,11 @@ onMounted(() => {
         <el-table-column prop="name" label="名称" />
         <el-table-column prop="domain" label="领域" />
         <el-table-column prop="namespace" label="命名空间" />
+        <el-table-column label="">
+          <template #default="{ row }">
+            <router-link :to="`/model/${row.id}`" :data-testid="`model-${row.code}`">建模</router-link>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
   </main>

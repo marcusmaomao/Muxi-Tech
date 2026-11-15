@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "required": ["displayName", "apiName", "baseType"],
+  "properties": {
+    "displayName": { "type": "string", "minLength": 1 },
+    "apiName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+    "baseType": { "type": "string", "enum": ["STRING", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "DATETIME"] },
+    "unit": { "type": "string" },
+    "scale": { "type": "integer", "minimum": 0 },
+    "format": { "type": "string" },
+    "description": { "type": "string" }
+  },
+  "additionalProperties": true
+}

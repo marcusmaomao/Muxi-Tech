@@ -8,6 +8,7 @@ import cn.muxicloud.mop.model.entity.ChangeEntity;
 import cn.muxicloud.mop.model.entity.CommitEntity;
 import cn.muxicloud.mop.model.entity.ElementEntity;
 import cn.muxicloud.mop.model.entity.ElementRefEntity;
+import cn.muxicloud.mop.model.form.ElementRules;
 import cn.muxicloud.mop.model.entity.ProjectEntity;
 import cn.muxicloud.mop.model.entity.ProjectMemberEntity;
 import cn.muxicloud.mop.model.mapper.BranchMapper;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.HexFormat;
@@ -106,6 +108,7 @@ public class ModelService {
         project.setScopeExclude(blankToNull(scopeExclude));
         project.setDescription(blankToNull(description));
         project.setOwnerUserId(actor.userId());
+        project.setRequireCqLink(1);
         project.setCreatedBy(actor.userId());
         project.setHeadRev(0L);
         projectMapper.insert(project);
@@ -239,12 +242,30 @@ public class ModelService {
         return commit;
     }
 
+    @Transactional
+    public ElementEntity saveElement(Long branchId, String op, String uid, String type, JsonNode payload, AuthenticatedUser actor) {
+        if ("DELETE".equals(op)) {
+            ElementEntity current = current(branchId, uid);
+            if (current == null || current.getTombstone() == 1) {
+                throw new MopException(ErrorCode.NOT_FOUND);
+            }
+            commit(branchId, "删除 " + current.getElementType(), List.of(new ChangeInput("DELETE", uid, current.getElementType(), current.getApiName(), null)), actor);
+            return null;
+        }
+        String apiName = text(payload, "apiName");
+        CommitEntity saved = commit(branchId, "表单" + op + " " + type, List.of(new ChangeInput(op, uid, type, apiName, payload)), actor);
+        ChangeEntity change = changeMapper.selectOne(new LambdaQueryWrapper<ChangeEntity>()
+                .eq(ChangeEntity::getCommitId, saved.getId())
+                .last("LIMIT 1"));
+        return current(branchId, change.getUid());
+    }
+
     private String apply(ProjectEntity project, BranchEntity branch, long rev, ChangeInput change) {
         String op = change.op();
         if ("DELETE".equals(op)) {
             guardReferences(branch.getId(), change.uid());
             ElementEntity current = current(branch.getId(), change.uid());
-            if (current == null) {
+            if (current == null || current.getTombstone() == 1) {
                 throw new MopException(ErrorCode.VALIDATION, "要删除的元素不存在", null);
             }
             close(current, rev);
@@ -253,17 +274,22 @@ public class ModelService {
             return current.getUid();
         }
         schemaValidator.validate(change.type(), change.payload());
+        enforcePayload(project, branch, change);
         String payload = change.payload().toString();
         String uid = change.uid() == null || change.uid().isBlank() ? Ulids.newUlid() : change.uid();
         String owner = text(change.payload(), "ownerUid");
         if ("MODIFY".equals(op)) {
             ElementEntity current = current(branch.getId(), uid);
-            if (current == null) {
+            if (current == null || current.getTombstone() == 1) {
                 throw new MopException(ErrorCode.VALIDATION, "要修改的元素不存在", null);
+            }
+            if (ElementRules.apiNameChanged(current.getApiName(), change.apiName())) {
+                throw new MopException(ErrorCode.VALIDATION, "API 名创建后不能修改", null);
             }
             close(current, rev);
             closeRefs(branch.getId(), uid, rev);
         }
+        uniqueApi(branch.getId(), change.type(), change.apiName(), uid, owner);
         insertRow(project, branch, rev, uid, change.type(), change.apiName(), owner, payload, 0);
         insertRefs(project, branch, rev, uid, change.payload());
         return uid;
@@ -321,10 +347,144 @@ public class ModelService {
         elementMapper.insert(row);
     }
 
+    private void enforcePayload(ProjectEntity project, BranchEntity branch, ChangeInput change) {
+        JsonNode payload = change.payload();
+        String type = change.type();
+        boolean cqRequired = ElementRules.requiresCq(type) && (project.getRequireCqLink() == null || project.getRequireCqLink() != 0);
+        if (cqRequired && !ElementRules.hasCq(payload)) {
+            throw new MopException(ErrorCode.CQ_REQUIRED);
+        }
+        String cardinality = ElementRules.cardinalityProblem(payload);
+        if (cardinality != null) {
+            throw new MopException(ErrorCode.VALIDATION, cardinality, null);
+        }
+        String inverse = ElementRules.inverseProblem(payload);
+        if (inverse != null) {
+            throw new MopException(ErrorCode.VALIDATION, inverse, null);
+        }
+        if ("PROPERTY".equals(type)) {
+            requireLive(branch.getId(), text(payload, "ownerUid"), "OBJECT_TYPE");
+            requireValueType(branch.getId(), payload.get("valueType"));
+        }
+        if ("ENUM_VALUE".equals(type)) {
+            requireLive(branch.getId(), text(payload, "ownerUid"), "ENUM_TYPE");
+        }
+        if ("LINK_TYPE".equals(type)) {
+            requireLive(branch.getId(), text(payload, "sourceUid"), "OBJECT_TYPE");
+            requireLive(branch.getId(), text(payload, "targetUid"), "OBJECT_TYPE");
+        }
+        requireEach(branch.getId(), payload.get("cqUids"), "CQ");
+        requireEach(branch.getId(), payload.get("parentUids"), "OBJECT_TYPE");
+        if ("DATA_RULE".equals(type)) {
+            requireLive(branch.getId(), text(payload, "targetObjectUid"), "OBJECT_TYPE");
+            String propertyUid = text(payload, "targetPropertyUid");
+            if (propertyUid != null) {
+                requireLive(branch.getId(), propertyUid, "PROPERTY");
+            }
+        }
+        if ("AXIOM".equals(type)) {
+            String subject = text(payload, "subjectUid");
+            if (subject != null) {
+                requireLive(branch.getId(), subject, "OBJECT_TYPE");
+            }
+            String objectUid = text(payload, "objectUid");
+            if (objectUid != null) {
+                requireLive(branch.getId(), objectUid, "OBJECT_TYPE");
+            }
+            requireEach(branch.getId(), payload.get("classUids"), "OBJECT_TYPE");
+        }
+    }
+
+    private void requireValueType(Long branchId, JsonNode valueType) {
+        if (valueType == null || valueType.isNull()) {
+            return;
+        }
+        String kind = text(valueType, "kind");
+        if ("DATA_TYPE".equals(kind)) {
+            requireLive(branchId, text(valueType, "dataTypeUid"), "DATA_TYPE");
+        }
+        if ("ENUM".equals(kind)) {
+            requireLive(branchId, text(valueType, "enumUid"), "ENUM_TYPE");
+        }
+    }
+
+    private void requireEach(Long branchId, JsonNode values, String expectedType) {
+        if (values == null || !values.isArray()) {
+            return;
+        }
+        for (JsonNode value : values) {
+            if (value.isTextual()) {
+                requireLive(branchId, value.asText(), expectedType);
+            }
+        }
+    }
+
+    private void requireLive(Long branchId, String uid, String expectedType) {
+        if (uid == null || uid.isBlank()) {
+            throw new MopException(ErrorCode.VALIDATION, "引用的元素不存在", null);
+        }
+        ElementEntity row = current(branchId, uid);
+        if (row == null || row.getTombstone() == 1 || !expectedType.equals(row.getElementType())) {
+            throw new MopException(ErrorCode.VALIDATION, "引用的元素不存在", null);
+        }
+    }
+
+    private void uniqueApi(Long branchId, String type, String apiName, String uid, String ownerUid) {
+        if (apiName == null || apiName.isBlank()) {
+            return;
+        }
+        LambdaQueryWrapper<ElementEntity> query = new LambdaQueryWrapper<ElementEntity>()
+                .eq(ElementEntity::getBranchId, branchId)
+                .eq(ElementEntity::getElementType, type)
+                .eq(ElementEntity::getApiName, apiName)
+                .isNull(ElementEntity::getRevEnd)
+                .eq(ElementEntity::getTombstone, 0);
+        if ("PROPERTY".equals(type) || "ENUM_VALUE".equals(type)) {
+            query.eq(ElementEntity::getOwnerUid, ownerUid);
+        }
+        for (ElementEntity row : elementMapper.selectList(query)) {
+            if (!row.getUid().equals(uid)) {
+                throw new MopException(ErrorCode.VALIDATION, "API 名已存在", null);
+            }
+        }
+    }
+
     private void insertRefs(ProjectEntity project, BranchEntity branch, long rev, String fromUid, JsonNode payload) {
-        addRef(project, branch, rev, fromUid, text(payload, "ownerUid"), "PROP_OWNER");
-        addRef(project, branch, rev, fromUid, text(payload, "sourceUid"), "LINK_SOURCE");
-        addRef(project, branch, rev, fromUid, text(payload, "targetUid"), "LINK_TARGET");
+        Set<String> seen = new HashSet<>();
+        link(project, branch, rev, fromUid, text(payload, "ownerUid"), "PROP_OWNER", seen);
+        link(project, branch, rev, fromUid, text(payload, "sourceUid"), "LINK_SOURCE", seen);
+        link(project, branch, rev, fromUid, text(payload, "targetUid"), "LINK_TARGET", seen);
+        link(project, branch, rev, fromUid, text(payload, "subjectUid"), "AXIOM_CLASS", seen);
+        link(project, branch, rev, fromUid, text(payload, "objectUid"), "AXIOM_CLASS", seen);
+        link(project, branch, rev, fromUid, text(payload, "targetObjectUid"), "RULE_TARGET", seen);
+        link(project, branch, rev, fromUid, text(payload, "targetPropertyUid"), "RULE_TARGET", seen);
+        linkAll(project, branch, rev, fromUid, payload.get("cqUids"), "CQ_LINK", seen);
+        linkAll(project, branch, rev, fromUid, payload.get("parentUids"), "EXTENDS", seen);
+        linkAll(project, branch, rev, fromUid, payload.get("termUids"), "TERM_LINK", seen);
+        linkAll(project, branch, rev, fromUid, payload.get("classUids"), "AXIOM_CLASS", seen);
+        JsonNode valueType = payload.get("valueType");
+        if (valueType != null && valueType.isObject()) {
+            link(project, branch, rev, fromUid, text(valueType, "dataTypeUid"), "PROP_TYPE", seen);
+            link(project, branch, rev, fromUid, text(valueType, "enumUid"), "ENUM_OF", seen);
+        }
+    }
+
+    private void linkAll(ProjectEntity project, BranchEntity branch, long rev, String fromUid, JsonNode values, String type, Set<String> seen) {
+        if (values == null || !values.isArray()) {
+            return;
+        }
+        for (JsonNode value : values) {
+            if (value.isTextual()) {
+                link(project, branch, rev, fromUid, value.asText(), type, seen);
+            }
+        }
+    }
+
+    private void link(ProjectEntity project, BranchEntity branch, long rev, String fromUid, String toUid, String type, Set<String> seen) {
+        if (toUid == null || toUid.isBlank() || !seen.add(type + ":" + toUid)) {
+            return;
+        }
+        addRef(project, branch, rev, fromUid, toUid, type);
     }
 
     private void addRef(ProjectEntity project, BranchEntity branch, long rev, String fromUid, String toUid, String type) {
