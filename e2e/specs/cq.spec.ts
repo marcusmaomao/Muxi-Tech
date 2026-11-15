@@ -5,7 +5,7 @@ const username = process.env.E2E_USERNAME ?? "admin";
 const password = process.env.E2E_PASSWORD ?? "demo-admin";
 const stamp = Date.now().toString(36);
 
-test("CQ SPARQL passes, manual status does not raise coverage, and deleting the link fails the test", async ({ page }) => {
+test("E2E-08 CQ SPARQL passes, then deleting the link fails the test and lowers coverage", async ({ page }) => {
   await new LoginPage(page).signIn(username, password);
   await page.locator("aside").getByRole("link", { name: "项目" }).click();
   await page.getByTestId("project-code").locator("input").fill(`cq-${stamp}`);
