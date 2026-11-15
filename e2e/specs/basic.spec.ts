@@ -41,7 +41,7 @@ test("admin creates a project, checks mysql, and reads a file", async ({ page })
     buffer: Buffer.from("变压器检修记录"),
   });
   await page.getByTestId("upload-file").click();
-  await page.getByRole("row", { name: /note.txt/ }).getByRole("button", { name: "文本" }).click();
+  await page.getByTestId("file-table").locator("tr", { hasText: "note.txt" }).first().getByRole("button", { name: "文本" }).click();
   await expect(page.getByTestId("file-text")).toContainText("变压器检修记录");
   await page.screenshot({ path: "test-results/files.png", fullPage: true });
 });

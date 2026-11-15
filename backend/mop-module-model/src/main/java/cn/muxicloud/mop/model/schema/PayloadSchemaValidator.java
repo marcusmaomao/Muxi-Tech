@@ -18,7 +18,14 @@ public class PayloadSchemaValidator {
     private static final Map<String, String> FILES = Map.of(
             "OBJECT_TYPE", "/schema/OBJECT_TYPE.schema.json",
             "PROPERTY", "/schema/PROPERTY.schema.json",
-            "LINK_TYPE", "/schema/LINK_TYPE.schema.json");
+            "LINK_TYPE", "/schema/LINK_TYPE.schema.json",
+            "TERM", "/schema/TERM.schema.json",
+            "DATA_TYPE", "/schema/DATA_TYPE.schema.json",
+            "ENUM_TYPE", "/schema/ENUM_TYPE.schema.json",
+            "ENUM_VALUE", "/schema/ENUM_VALUE.schema.json",
+            "CQ", "/schema/CQ.schema.json",
+            "AXIOM", "/schema/AXIOM.schema.json",
+            "DATA_RULE", "/schema/DATA_RULE.schema.json");
 
     private final JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
 

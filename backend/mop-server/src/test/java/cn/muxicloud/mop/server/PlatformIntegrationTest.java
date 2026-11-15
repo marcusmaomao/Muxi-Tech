@@ -100,13 +100,15 @@ class PlatformIntegrationTest {
         mvc.perform(post("/api/v1/branches/" + branchId + "/commits")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"message\":\"类型\",\"changes\":[{\"op\":\"ADD\",\"type\":\"OBJECT_TYPE\",\"apiName\":\"Transformer\",\"payload\":{\"displayName\":\"变压器\",\"apiName\":\"Transformer\"}}]}"))
+                        .content("{\"message\":\"能力问题\",\"changes\":[{\"op\":\"ADD\",\"type\":\"CQ\",\"apiName\":\"whichAssets\",\"payload\":{\"displayName\":\"有哪些设备\",\"apiName\":\"whichAssets\"}}]}"))
                 .andExpect(status().isOk());
-        MvcResult elements = mvc.perform(get("/api/v1/branches/" + branchId + "/elements")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andReturn();
-        String typeUid = objectMapper.readTree(elements.getResponse().getContentAsString()).path("data").get(0).path("uid").asText();
+        String cqUid = elementUid(token, branchId, "CQ");
+        mvc.perform(post("/api/v1/branches/" + branchId + "/commits")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"类型\",\"changes\":[{\"op\":\"ADD\",\"type\":\"OBJECT_TYPE\",\"apiName\":\"Transformer\",\"payload\":{\"displayName\":\"变压器\",\"apiName\":\"Transformer\",\"cqUids\":[\"" + cqUid + "\"]}}]}"))
+                .andExpect(status().isOk());
+        String typeUid = elementUid(token, branchId, "OBJECT_TYPE");
         mvc.perform(post("/api/v1/branches/" + branchId + "/commits")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,6 +135,19 @@ class PlatformIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    private String elementUid(String token, long branchId, String type) throws Exception {
+        MvcResult elements = mvc.perform(get("/api/v1/branches/" + branchId + "/elements")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        for (JsonNode node : objectMapper.readTree(elements.getResponse().getContentAsString()).path("data")) {
+            if (type.equals(node.path("elementType").asText())) {
+                return node.path("uid").asText();
+            }
+        }
+        throw new AssertionError("缺少元素 " + type);
     }
 
     private JsonNode users(String token) throws Exception {

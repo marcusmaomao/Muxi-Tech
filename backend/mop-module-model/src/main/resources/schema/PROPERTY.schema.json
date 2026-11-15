@@ -4,7 +4,14 @@
   "properties": {
     "displayName": { "type": "string", "minLength": 1 },
     "apiName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
-    "ownerUid": { "type": "string", "minLength": 26, "maxLength": 26 }
+    "ownerUid": { "type": "string", "minLength": 26, "maxLength": 26 },
+    "required": { "type": "boolean" },
+    "minCount": { "type": "integer", "minimum": 0 },
+    "maxCount": { "type": "integer", "minimum": 0 },
+    "multiValued": { "type": "boolean" },
+    "defaultValue": {},
+    "primaryKey": { "type": "boolean" },
+    "title": { "type": "boolean" }
   },
   "additionalProperties": true
 }

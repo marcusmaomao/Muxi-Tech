@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "required": ["kind"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["SUBCLASS", "EQUIVALENT", "DISJOINT", "DOMAIN", "RANGE"] },
+    "subjectUid": { "type": "string" },
+    "objectUid": { "type": "string" },
+    "classUids": { "type": "array", "items": { "type": "string" } },
+    "description": { "type": "string" }
+  },
+  "additionalProperties": true
+}

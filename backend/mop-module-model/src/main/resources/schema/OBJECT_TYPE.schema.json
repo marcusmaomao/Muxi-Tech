@@ -4,7 +4,9 @@
   "properties": {
     "displayName": { "type": "string", "minLength": 1 },
     "apiName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
-    "description": { "type": "string" }
+    "description": { "type": "string" },
+    "cqUids": { "type": "array", "items": { "type": "string" } },
+    "parentUids": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": true
 }

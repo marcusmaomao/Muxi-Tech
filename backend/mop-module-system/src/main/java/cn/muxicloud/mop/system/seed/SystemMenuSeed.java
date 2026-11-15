@@ -51,7 +51,8 @@ public class SystemMenuSeed implements ApplicationRunner {
             {"修改数据源", "", "BUTTON", "basic:datasource:update", "123"},
             {"删除数据源", "", "BUTTON", "basic:datasource:delete", "124"},
             {"文件", "/basic/files", "MENU", "basic:file:list", "130"},
-            {"上传文件", "", "BUTTON", "basic:file:upload", "131"}
+            {"上传文件", "", "BUTTON", "basic:file:upload", "131"},
+            {"建模", "/model", "MENU", "model:form:edit", "140"}
     };
 
     private final DemoSeedProperties properties;

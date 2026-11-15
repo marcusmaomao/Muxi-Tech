@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "required": ["kind", "targetObjectUid"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["REQUIRED", "ENUM", "RANGE", "PATTERN", "CONDITION"] },
+    "targetObjectUid": { "type": "string", "minLength": 26, "maxLength": 26 },
+    "targetPropertyUid": { "type": "string" },
+    "min": { "type": "number" },
+    "max": { "type": "number" },
+    "pattern": { "type": "string" },
+    "severity": { "type": "string", "enum": ["Violation", "Warning", "Info"] },
+    "message": { "type": "string" }
+  },
+  "additionalProperties": true
+}
