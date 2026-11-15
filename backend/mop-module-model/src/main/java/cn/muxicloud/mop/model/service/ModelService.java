@@ -8,6 +8,9 @@ import cn.muxicloud.mop.model.entity.ChangeEntity;
 import cn.muxicloud.mop.model.entity.CommitEntity;
 import cn.muxicloud.mop.model.entity.ElementEntity;
 import cn.muxicloud.mop.model.entity.ElementRefEntity;
+import cn.muxicloud.mop.model.api.BranchCatalog;
+import cn.muxicloud.mop.model.api.BranchCatalog.CatalogElement;
+import cn.muxicloud.mop.model.api.BranchCatalog.CatalogSnapshot;
 import cn.muxicloud.mop.model.form.ElementRules;
 import cn.muxicloud.mop.model.entity.ProjectEntity;
 import cn.muxicloud.mop.model.entity.ProjectMemberEntity;
@@ -38,7 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ModelService {
+public class ModelService implements BranchCatalog {
     private static final Set<String> MEMBER_ROLES = Set.of("OWNER", "EDITOR", "VIEWER");
 
     private final ProjectMapper projectMapper;
@@ -185,6 +188,22 @@ public class ModelService {
 
     public List<BranchEntity> branches(Long projectId) {
         return branchMapper.selectList(new LambdaQueryWrapper<BranchEntity>().eq(BranchEntity::getProjectId, projectId));
+    }
+
+    @Override
+    public CatalogSnapshot snapshot(long branchId) {
+        BranchEntity branch = branchMapper.selectById(branchId);
+        if (branch == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        ProjectEntity project = projectMapper.selectById(branch.getProjectId());
+        if (project == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        List<CatalogElement> rows = elements(branchId, null).stream()
+                .map(row -> new CatalogElement(row.getUid(), row.getElementType(), row.getApiName(), row.getOwnerUid(), row.getPayload()))
+                .toList();
+        return new CatalogSnapshot(project.getNamespace(), rows);
     }
 
     public List<ElementEntity> elements(Long branchId, String type) {

@@ -25,6 +25,7 @@ const targetUid = ref("");
 const minCount = ref("1");
 const maxCount = ref("1");
 const defaultValue = ref("");
+const preview = ref("");
 
 const kinds = [
   ["CQ", "能力问题"],
@@ -131,6 +132,19 @@ async function createElement() {
   }
 }
 
+async function exportOwl(format: string) {
+  message.value = "";
+  try {
+    const response = await http.get<string>(`/branches/${branchId.value}/export`, {
+      params: { format },
+      responseType: "text",
+    });
+    preview.value = response.data;
+  } catch (caught) {
+    message.value = caught instanceof ApiError ? caught.message : "导出失败";
+  }
+}
+
 watch(kind, () => {
   message.value = "";
 });
@@ -143,7 +157,12 @@ onMounted(() => {
 <template>
   <main class="page" data-testid="modeling-page">
     <h1>表单建模</h1>
-    <p class="lead">术语、类型、枚举、对象、属性和关系都写成一次提交。对象和关系要挂上能力问题。</p>
+    <p class="lead">术语、类型、枚举、对象、属性和关系都写成一次提交。对象和关系要挂上能力问题。导出的 IRI 使用命名空间和 API 名。</p>
+    <div class="kind-row">
+      <button type="button" data-testid="export-ttl" @click="exportOwl('ttl')">导出 Turtle</button>
+      <button type="button" data-testid="export-rdfxml" @click="exportOwl('rdfxml')">导出 RDF/XML</button>
+      <button type="button" data-testid="export-owl" @click="exportOwl('owl')">导出 OWL</button>
+    </div>
     <div class="kind-row">
       <button v-for="item in kinds" :key="item[0]" type="button" :data-testid="`kind-${item[0]}`" :class="{ on: kind === item[0] }" @click="kind = item[0]">
         {{ item[1] }}
@@ -176,6 +195,7 @@ onMounted(() => {
       <el-button native-type="submit" type="primary" data-testid="create-element">提交</el-button>
       <span class="hint" data-testid="form-error">{{ message }}</span>
     </form>
+    <pre v-if="preview" class="export" data-testid="export-preview">{{ preview }}</pre>
     <ul data-testid="element-list">
       <li v-for="row in ofType(kind)" :key="row.uid">{{ labelOf(row) }} · {{ row.apiName }}</li>
     </ul>
@@ -187,5 +207,6 @@ onMounted(() => {
 .kind-row button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; }
 .kind-row button.on { background: var(--pine); color: #fff; }
 select { height: 32px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-ul { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 20px; }
+ul, .export { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 20px; }
+.export { white-space: pre-wrap; max-height: 280px; overflow: auto; }
 </style>
