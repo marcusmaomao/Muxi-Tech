@@ -91,6 +91,9 @@ services:
       MOP_DEMO_ADMIN_PASSWORD: ${MOP_DEMO_ADMIN_PASSWORD}
       MOP_CAPTCHA_EXPOSE: ${MOP_CAPTCHA_EXPOSE:-false}
       MOP_DATASOURCE_SECRET: ${MOP_DATASOURCE_SECRET}
+      MOP_AI_KEY_SECRET: ${MOP_AI_KEY_SECRET:-local-dev-ai-key-secret-32b}
+      MOP_AI_RATE_LIMIT: redis
+      REDIS_HOST: redis
       MOP_STORAGE_ENDPOINT: http://minio:9000
       MOP_STORAGE_ACCESS_KEY: ${MINIO_USER}
       MOP_STORAGE_SECRET_KEY: ${MINIO_PASSWORD}
@@ -98,6 +101,8 @@ services:
       TZ: Asia/Shanghai
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       minio:
         condition: service_healthy

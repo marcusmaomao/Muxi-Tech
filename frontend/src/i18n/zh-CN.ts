@@ -18,6 +18,7 @@ export default {
     projects: "项目",
     datasources: "数据源",
     files: "文件",
+    models: "模型",
     system: "系统",
     users: "用户",
     roles: "角色",
