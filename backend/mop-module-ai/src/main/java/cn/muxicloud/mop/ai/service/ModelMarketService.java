@@ -2,23 +2,46 @@ package cn.muxicloud.mop.ai.service;
 
 import cn.muxicloud.mop.ai.config.AiKeyProperties;
 import cn.muxicloud.mop.ai.crypto.KeyCipher;
+import cn.muxicloud.mop.ai.entity.AiCandidateEntity;
+import cn.muxicloud.mop.ai.entity.AiEvidenceEntity;
+import cn.muxicloud.mop.ai.entity.AiJobEntity;
+import cn.muxicloud.mop.ai.entity.AiJobEventEntity;
 import cn.muxicloud.mop.ai.entity.AiModelEntity;
 import cn.muxicloud.mop.ai.entity.AiUsageEntity;
 import cn.muxicloud.mop.ai.gateway.ModelRateLimiter;
 import cn.muxicloud.mop.ai.gateway.OpenAiChatClient;
+import cn.muxicloud.mop.ai.mapper.AiCandidateMapper;
+import cn.muxicloud.mop.ai.mapper.AiEvidenceMapper;
+import cn.muxicloud.mop.ai.mapper.AiJobEventMapper;
+import cn.muxicloud.mop.ai.mapper.AiJobMapper;
 import cn.muxicloud.mop.ai.mapper.AiModelMapper;
 import cn.muxicloud.mop.ai.mapper.AiUsageMapper;
+import cn.muxicloud.mop.ai.pipeline.RoundPlanner;
+import cn.muxicloud.mop.basic.api.DocumentText;
 import cn.muxicloud.mop.common.error.ErrorCode;
 import cn.muxicloud.mop.common.error.MopException;
+import cn.muxicloud.mop.model.api.BranchCatalog;
+import cn.muxicloud.mop.model.api.ElementWriter;
 import cn.muxicloud.mop.security.AuthenticatedUser;
+import cn.muxicloud.mop.tenant.TenantContext;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 public class ModelMarketService {
@@ -27,13 +50,42 @@ public class ModelMarketService {
     private final AiUsageMapper usageMapper;
     private final ModelRateLimiter rateLimiter;
     private final AiKeyProperties secrets;
+    private final DocumentText documents;
+    private final ElementWriter elementWriter;
+    private final BranchCatalog catalog;
+    private final AiJobMapper jobMapper;
+    private final AiEvidenceMapper evidenceMapper;
+    private final AiCandidateMapper candidateMapper;
+    private final AiJobEventMapper eventMapper;
     private final OpenAiChatClient client = new OpenAiChatClient();
+    private final ObjectMapper json = new ObjectMapper();
+    private final RoundPlanner planner = new RoundPlanner();
+    private final ExecutorService workers = Executors.newCachedThreadPool();
+    private final ConcurrentHashMap<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    public ModelMarketService(AiModelMapper modelMapper, AiUsageMapper usageMapper, ModelRateLimiter rateLimiter, AiKeyProperties secrets) {
+    public ModelMarketService(
+            AiModelMapper modelMapper,
+            AiUsageMapper usageMapper,
+            ModelRateLimiter rateLimiter,
+            AiKeyProperties secrets,
+            DocumentText documents,
+            ElementWriter elementWriter,
+            BranchCatalog catalog,
+            AiJobMapper jobMapper,
+            AiEvidenceMapper evidenceMapper,
+            AiCandidateMapper candidateMapper,
+            AiJobEventMapper eventMapper) {
         this.modelMapper = modelMapper;
         this.usageMapper = usageMapper;
         this.rateLimiter = rateLimiter;
         this.secrets = secrets;
+        this.documents = documents;
+        this.elementWriter = elementWriter;
+        this.catalog = catalog;
+        this.jobMapper = jobMapper;
+        this.evidenceMapper = evidenceMapper;
+        this.candidateMapper = candidateMapper;
+        this.eventMapper = eventMapper;
     }
 
     public List<ModelView> list() {
@@ -189,6 +241,405 @@ public class ModelMarketService {
 
     private static String shorten(String text) {
         return text.length() <= 120 ? text : text.substring(0, 120);
+    }
+
+    public AiJobEntity startJob(long projectId, long branchId, long fileId, long modelId, boolean background, AuthenticatedUser actor) {
+        DocumentText.Extracted document = documents.read(fileId);
+        AiJobEntity job = new AiJobEntity();
+        job.setTenantId(actor.tenantId());
+        job.setProjectId(projectId);
+        job.setBranchId(branchId);
+        job.setFileId(fileId);
+        job.setModelId(modelId);
+        job.setKind("MODELING");
+        job.setStatus("PAUSED");
+        job.setStage("PARSE");
+        job.setPromptVersion("v1");
+        job.setCreatedBy(actor.userId());
+        job.setCreatedAt(LocalDateTime.now());
+        jobMapper.insert(job);
+        int block = 1;
+        for (String window : RoundPlanner.windows(document.text())) {
+            AiEvidenceEntity evidence = new AiEvidenceEntity();
+            evidence.setTenantId(actor.tenantId());
+            evidence.setJobId(job.getId());
+            evidence.setFileId(fileId);
+            evidence.setBlockNo(block);
+            evidence.setContent(window);
+            evidence.setContentHash(sha(window));
+            evidenceMapper.insert(evidence);
+            event(job, "PARSE", "证据块 " + block + "：" + shorten(window));
+            block++;
+        }
+        event(job, "PARSE", "文档已解析，等待四轮生成");
+        if (background) {
+            workers.submit(() -> runQuietly(job.getId(), null, actor));
+        }
+        return jobMapper.selectById(job.getId());
+    }
+
+    public AiJobEntity resume(long jobId, String throughStage, AuthenticatedUser actor) {
+        runQuietly(jobId, throughStage, actor);
+        return requiredJob(jobId);
+    }
+
+    public AiJobEntity job(long jobId) {
+        return requiredJob(jobId);
+    }
+
+    public List<AiJobEventEntity> events(long jobId) {
+        requiredJob(jobId);
+        return eventMapper.selectList(new LambdaQueryWrapper<AiJobEventEntity>().eq(AiJobEventEntity::getJobId, jobId).orderByAsc(AiJobEventEntity::getSeqNo));
+    }
+
+    public List<AiCandidateEntity> candidates(long jobId) {
+        requiredJob(jobId);
+        return candidateMapper.selectList(new LambdaQueryWrapper<AiCandidateEntity>().eq(AiCandidateEntity::getJobId, jobId).orderByAsc(AiCandidateEntity::getId));
+    }
+
+    public List<AiEvidenceEntity> evidence(long jobId) {
+        requiredJob(jobId);
+        return evidenceMapper.selectList(new LambdaQueryWrapper<AiEvidenceEntity>().eq(AiEvidenceEntity::getJobId, jobId).orderByAsc(AiEvidenceEntity::getBlockNo));
+    }
+
+    public SseEmitter stream(long jobId) {
+        requiredJob(jobId);
+        SseEmitter emitter = new SseEmitter(120_000L);
+        try {
+            for (AiJobEventEntity row : events(jobId)) {
+                emitter.send(SseEmitter.event().name(row.getStage()).data(row.getMessage()));
+            }
+            AiJobEntity job = requiredJob(jobId);
+            if ("SUCCEEDED".equals(job.getStatus()) || "FAILED".equals(job.getStatus())) {
+                emitter.send(SseEmitter.event().name("status").data(job.getStatus()));
+                emitter.complete();
+            } else {
+                emitters.put(jobId, emitter);
+                emitter.onCompletion(() -> emitters.remove(jobId, emitter));
+                emitter.onTimeout(() -> emitters.remove(jobId, emitter));
+            }
+        } catch (Exception ex) {
+            emitter.completeWithError(ex);
+        }
+        return emitter;
+    }
+
+    @Transactional
+    public AiCandidateEntity editCandidate(long candidateId, String displayName, String apiName) {
+        AiCandidateEntity candidate = requiredCandidate(candidateId);
+        if (!"PENDING".equals(candidate.getState())) {
+            throw new MopException(ErrorCode.VALIDATION, "只有待处理候选可以编辑", null);
+        }
+        try {
+            ObjectNode payload = (ObjectNode) json.readTree(candidate.getPayload());
+            if (displayName != null && !displayName.isBlank()) {
+                payload.put("displayName", displayName.trim());
+            }
+            if (apiName != null && !apiName.isBlank()) {
+                payload.put("apiName", apiName.trim());
+                candidate.setCandidateKey(candidate.getElementType() + ":" + apiName.trim());
+            }
+            candidate.setPayload(payload.toString());
+            candidateMapper.updateById(candidate);
+            return candidate;
+        } catch (MopException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "候选内容无法编辑", null);
+        }
+    }
+
+    public AiCandidateEntity reject(long candidateId) {
+        AiCandidateEntity candidate = requiredCandidate(candidateId);
+        candidate.setState("REJECTED");
+        candidateMapper.updateById(candidate);
+        return candidate;
+    }
+
+    public AiCandidateEntity adopt(long candidateId, AuthenticatedUser actor) {
+        AiCandidateEntity candidate = requiredCandidate(candidateId);
+        if (!"PENDING".equals(candidate.getState())) {
+            throw new MopException(ErrorCode.VALIDATION, "该候选不能采纳", null);
+        }
+        AiJobEntity job = requiredJob(candidate.getJobId());
+        try {
+            ObjectNode payload = commitPayload(job.getBranchId(), candidate);
+            ElementWriter.Adopted adopted = elementWriter.add(job.getBranchId(), candidate.getElementType(), payload, actor, "AI 采纳 " + candidate.getElementType());
+            candidate.setState("ADOPTED");
+            candidate.setAdoptedUid(adopted.uid());
+            candidate.setMessage(null);
+            candidateMapper.updateById(candidate);
+            return candidate;
+        } catch (MopException ex) {
+            candidate.setMessage(ex.getMessage());
+            candidateMapper.updateById(candidate);
+            throw ex;
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "候选无法写入", null);
+        }
+    }
+
+    public List<AiCandidateEntity> adoptAll(long jobId, AuthenticatedUser actor) {
+        List<String> order = List.of("CQ", "TERM", "ENUM_TYPE", "OBJECT_TYPE", "PROPERTY", "LINK_TYPE", "AXIOM", "DATA_RULE");
+        for (String type : order) {
+            for (AiCandidateEntity candidate : candidates(jobId)) {
+                if (type.equals(candidate.getElementType()) && "PENDING".equals(candidate.getState())) {
+                    adopt(candidate.getId(), actor);
+                }
+            }
+        }
+        return candidates(jobId);
+    }
+
+    private void runQuietly(long jobId, String throughStage, AuthenticatedUser actor) {
+        Long previous = TenantContext.get();
+        TenantContext.set(actor.tenantId());
+        try {
+            run(jobId, throughStage, actor);
+        } finally {
+            if (previous == null) {
+                TenantContext.clear();
+            } else {
+                TenantContext.set(previous);
+            }
+        }
+    }
+
+    private void run(long jobId, String throughStage, AuthenticatedUser actor) {
+        AiJobEntity job = requiredJob(jobId);
+        if ("SUCCEEDED".equals(job.getStatus())) {
+            return;
+        }
+        String previousStatus = job.getStatus();
+        job.setStatus("RUNNING");
+        job.setError(null);
+        jobMapper.updateById(job);
+        List<AiEvidenceEntity> blocks = evidence(jobId);
+        List<String> rounds = RoundPlanner.rounds();
+        int start = rounds.indexOf(job.getStage());
+        if (start < 0) {
+            start = 0;
+        } else if (!"FAILED".equals(previousStatus)) {
+            start++;
+        }
+        for (int index = start; index < rounds.size(); index++) {
+            String round = rounds.get(index);
+            job.setStage(round);
+            jobMapper.updateById(job);
+            event(job, round, "开始 " + round);
+            int failed = 0;
+            for (AiEvidenceEntity block : blocks) {
+                if (!generate(job, block, round, actor)) {
+                    failed++;
+                }
+            }
+            if (failed == blocks.size()) {
+                job.setStatus("FAILED");
+                job.setError(round + " 的模型输出无法通过 JSON Schema 或证据校验");
+                job.setFinishedAt(LocalDateTime.now());
+                jobMapper.updateById(job);
+                event(job, round, job.getError());
+                return;
+            }
+            event(job, round, round + " 已完成");
+            if (round.equals(throughStage)) {
+                job.setStatus("PAUSED");
+                jobMapper.updateById(job);
+                event(job, round, "已在 " + round + " 暂停，可以续跑");
+                return;
+            }
+        }
+        job.setStatus("SUCCEEDED");
+        job.setStage("DONE");
+        job.setFinishedAt(LocalDateTime.now());
+        jobMapper.updateById(job);
+        event(job, "DONE", "四轮生成结束");
+    }
+
+    private boolean generate(AiJobEntity job, AiEvidenceEntity block, String round, AuthenticatedUser actor) {
+        String prior = priorIndex(job.getId());
+        String output = ask(job, round, planner.prompt(round, block.getContent(), prior), actor);
+        List<RoundPlanner.Draft> drafts = tryParse(output, block.getContent());
+        if (drafts == null) {
+            output = ask(job, round, planner.repair(round, block.getContent()), actor);
+            drafts = tryParse(output, block.getContent());
+        }
+        if (drafts == null && block.getContent().length() > 80) {
+            int middle = block.getContent().length() / 2;
+            return generateText(job, block, round, block.getContent().substring(0, middle), actor)
+                    && generateText(job, block, round, block.getContent().substring(middle), actor);
+        }
+        if (drafts == null) {
+            return false;
+        }
+        saveDrafts(job, block, drafts);
+        return true;
+    }
+
+    private boolean generateText(AiJobEntity job, AiEvidenceEntity block, String round, String text, AuthenticatedUser actor) {
+        String output = ask(job, round, planner.prompt(round, text, priorIndex(job.getId())), actor);
+        List<RoundPlanner.Draft> drafts = tryParse(output, text);
+        if (drafts == null) {
+            return false;
+        }
+        saveDrafts(job, block, drafts);
+        return true;
+    }
+
+    private List<RoundPlanner.Draft> tryParse(String output, String evidence) {
+        try {
+            return planner.parse(output, evidence);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    private void saveDrafts(AiJobEntity job, AiEvidenceEntity block, List<RoundPlanner.Draft> drafts) {
+        for (RoundPlanner.Draft draft : drafts) {
+            String key = draft.type() + ":" + draft.apiName();
+            Long existing = candidateMapper.selectCount(new LambdaQueryWrapper<AiCandidateEntity>()
+                    .eq(AiCandidateEntity::getJobId, job.getId())
+                    .eq(AiCandidateEntity::getCandidateKey, key));
+            if (existing != null && existing > 0) {
+                continue;
+            }
+            AiCandidateEntity candidate = new AiCandidateEntity();
+            candidate.setTenantId(job.getTenantId());
+            candidate.setJobId(job.getId());
+            candidate.setCandidateKey(key);
+            candidate.setElementType(draft.type());
+            candidate.setPayload(draft.source().toString());
+            candidate.setEvidenceQuote(draft.evidence());
+            candidate.setBlockNo(block.getBlockNo());
+            candidate.setConfidence(draft.confidence());
+            candidate.setState("PENDING");
+            candidateMapper.insert(candidate);
+            event(job, job.getStage(), "候选 " + draft.displayName() + "，出处：" + shorten(draft.evidence()));
+        }
+    }
+
+    private String ask(AiJobEntity job, String round, String prompt, AuthenticatedUser actor) {
+        ChatView view = chat(job.getModelId(), List.of(
+                new OpenAiChatClient.Message("system", "你只输出 JSON。轮次标记必须保留。"),
+                new OpenAiChatClient.Message("user", prompt)), actor);
+        return view.content();
+    }
+
+    private String priorIndex(long jobId) {
+        StringBuilder builder = new StringBuilder();
+        for (AiCandidateEntity candidate : candidates(jobId)) {
+            builder.append(candidate.getElementType()).append(':').append(candidate.getCandidateKey()).append('\n');
+        }
+        return builder.toString();
+    }
+
+    private ObjectNode commitPayload(long branchId, AiCandidateEntity candidate) throws Exception {
+        com.fasterxml.jackson.databind.JsonNode source = json.readTree(candidate.getPayload());
+        ObjectNode payload = json.createObjectNode();
+        payload.put("displayName", source.path("displayName").asText(candidate.getEvidenceQuote()));
+        payload.put("apiName", source.path("apiName").asText());
+        String type = candidate.getElementType();
+        if ("CQ".equals(type)) {
+            payload.put("priority", "P1");
+            payload.put("acceptance", candidate.getEvidenceQuote());
+        }
+        if ("OBJECT_TYPE".equals(type) || "LINK_TYPE".equals(type)) {
+            ArrayNode cqs = payload.putArray("cqUids");
+            if (source.has("cqApiNames")) {
+                for (com.fasterxml.jackson.databind.JsonNode name : source.path("cqApiNames")) {
+                    String uid = findUid(branchId, "CQ", name.asText());
+                    if (uid != null) {
+                        cqs.add(uid);
+                    }
+                }
+            }
+        }
+        if ("PROPERTY".equals(type)) {
+            payload.put("ownerUid", findUid(branchId, "OBJECT_TYPE", source.path("ownerApiName").asText("Transformer")));
+            payload.put("required", true);
+            payload.put("minCount", source.path("minCount").asInt(1));
+            payload.put("maxCount", source.path("maxCount").asInt(1));
+            if (source.has("defaultValue")) {
+                payload.put("defaultValue", source.path("defaultValue").asText());
+            }
+            payload.putObject("valueType").put("kind", "BASIC").put("basic", "DECIMAL");
+        }
+        if ("LINK_TYPE".equals(type)) {
+            payload.put("sourceUid", findUid(branchId, "OBJECT_TYPE", source.path("sourceApiName").asText()));
+            payload.put("targetUid", findUid(branchId, "OBJECT_TYPE", source.path("targetApiName").asText()));
+            payload.put("cardinality", source.path("cardinality").asText("MANY_TO_ONE"));
+            payload.put("invertible", false);
+        }
+        if ("AXIOM".equals(type)) {
+            payload.put("kind", source.path("kind").asText("SUBCLASS"));
+            payload.put("subjectUid", findUid(branchId, "OBJECT_TYPE", source.path("subjectApiName").asText()));
+            payload.put("objectUid", findUid(branchId, "OBJECT_TYPE", source.path("objectApiName").asText()));
+        }
+        if ("DATA_RULE".equals(type)) {
+            payload.put("kind", source.path("kind").asText("RANGE"));
+            payload.put("targetObjectUid", findUid(branchId, "OBJECT_TYPE", source.path("targetApiName").asText()));
+            payload.put("min", source.path("min").asDouble(0));
+            payload.put("max", source.path("max").asDouble(1));
+            payload.put("severity", "Violation");
+            payload.put("message", candidate.getEvidenceQuote());
+        }
+        return payload;
+    }
+
+    private String findUid(long branchId, String type, String apiName) {
+        for (BranchCatalog.CatalogElement element : catalog.snapshot(branchId).elements()) {
+            if (type.equals(element.type()) && apiName.equals(element.apiName())) {
+                return element.uid();
+            }
+        }
+        return null;
+    }
+
+    private void event(AiJobEntity job, String stage, String message) {
+        Integer count = eventMapper.selectCount(new LambdaQueryWrapper<AiJobEventEntity>().eq(AiJobEventEntity::getJobId, job.getId())).intValue();
+        AiJobEventEntity row = new AiJobEventEntity();
+        row.setTenantId(job.getTenantId());
+        row.setJobId(job.getId());
+        row.setSeqNo(count + 1);
+        row.setStage(stage);
+        row.setMessage(message);
+        row.setCreatedAt(LocalDateTime.now());
+        eventMapper.insert(row);
+        SseEmitter emitter = emitters.get(job.getId());
+        if (emitter != null) {
+            try {
+                emitter.send(SseEmitter.event().name(stage).data(message));
+                if ("SUCCEEDED".equals(job.getStatus()) || "FAILED".equals(job.getStatus()) || "PAUSED".equals(job.getStatus())) {
+                    emitter.complete();
+                }
+            } catch (Exception ex) {
+                emitters.remove(job.getId());
+            }
+        }
+    }
+
+    private AiJobEntity requiredJob(long jobId) {
+        AiJobEntity job = jobMapper.selectById(jobId);
+        if (job == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        return job;
+    }
+
+    private AiCandidateEntity requiredCandidate(long candidateId) {
+        AiCandidateEntity candidate = candidateMapper.selectById(candidateId);
+        if (candidate == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        return candidate;
+    }
+
+    private static String sha(String text) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     public record ModelInput(String displayName, String modelName, String vendor, String baseUrl, String apiKey, Integer rpmLimit) {}

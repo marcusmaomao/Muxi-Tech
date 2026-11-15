@@ -8,6 +8,7 @@ import cn.muxicloud.mop.model.entity.ChangeEntity;
 import cn.muxicloud.mop.model.entity.CommitEntity;
 import cn.muxicloud.mop.model.entity.ElementEntity;
 import cn.muxicloud.mop.model.entity.ElementRefEntity;
+import cn.muxicloud.mop.model.api.ElementWriter;
 import cn.muxicloud.mop.model.api.BranchCatalog;
 import cn.muxicloud.mop.model.api.BranchCatalog.CatalogElement;
 import cn.muxicloud.mop.model.api.BranchCatalog.CatalogSnapshot;
@@ -41,7 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ModelService implements BranchCatalog {
+public class ModelService implements BranchCatalog, ElementWriter {
     private static final Set<String> MEMBER_ROLES = Set.of("OWNER", "EDITOR", "VIEWER");
 
     private final ProjectMapper projectMapper;
@@ -271,8 +272,26 @@ public class ModelService implements BranchCatalog {
             commit(branchId, "删除 " + current.getElementType(), List.of(new ChangeInput("DELETE", uid, current.getElementType(), current.getApiName(), null)), actor);
             return null;
         }
+        return saveElement(branchId, op, uid, type, payload, actor, "表单" + op + " " + type);
+    }
+
+    @Override
+    public Adopted add(long branchId, String type, JsonNode payload, AuthenticatedUser actor, String message) {
+        ElementEntity saved = saveElement(branchId, "ADD", null, type, payload, actor, message);
+        return new Adopted(saved.getUid());
+    }
+
+    private ElementEntity saveElement(Long branchId, String op, String uid, String type, JsonNode payload, AuthenticatedUser actor, String message) {
+        if ("DELETE".equals(op)) {
+            ElementEntity current = current(branchId, uid);
+            if (current == null || current.getTombstone() == 1) {
+                throw new MopException(ErrorCode.NOT_FOUND);
+            }
+            commit(branchId, message, List.of(new ChangeInput("DELETE", uid, current.getElementType(), current.getApiName(), null)), actor);
+            return null;
+        }
         String apiName = text(payload, "apiName");
-        CommitEntity saved = commit(branchId, "表单" + op + " " + type, List.of(new ChangeInput(op, uid, type, apiName, payload)), actor);
+        CommitEntity saved = commit(branchId, message, List.of(new ChangeInput(op, uid, type, apiName, payload)), actor);
         ChangeEntity change = changeMapper.selectOne(new LambdaQueryWrapper<ChangeEntity>()
                 .eq(ChangeEntity::getCommitId, saved.getId())
                 .last("LIMIT 1"));

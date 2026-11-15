@@ -1,0 +1,20 @@
+{
+  "priority": 2,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/chat/completions",
+    "bodyPatterns": [{ "contains": "轮次：1" }]
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "choices": [{
+        "message": {
+          "role": "assistant",
+          "content": "{\"candidates\":[{\"type\":\"CQ\",\"apiName\":\"whichDevices\",\"displayName\":\"有哪些设备\",\"evidence\":\"变压器是电网的主设备\",\"confidence\":0.9},{\"type\":\"TERM\",\"apiName\":\"transformerTerm\",\"displayName\":\"变压器术语\",\"evidence\":\"变压器是电网的主设备\",\"confidence\":0.8}]}"
+        }
+      }]
+    }
+  }
+}
