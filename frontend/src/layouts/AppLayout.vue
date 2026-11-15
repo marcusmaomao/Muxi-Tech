@@ -29,6 +29,7 @@ async function onLogout() {
         <router-link v-if="auth.can('model:form:edit')" to="/model/versions">{{ t("nav.versions") }}</router-link>
         <router-link v-if="auth.can('model:form:edit')" to="/model/canvas">{{ t("nav.canvas") }}</router-link>
         <router-link v-if="auth.can('model:form:edit')" to="/model/cq">{{ t("nav.semantic") }}</router-link>
+        <router-link v-if="auth.can('model:form:edit')" to="/model/quality">{{ t("nav.quality") }}</router-link>
         <router-link v-if="auth.can('runtime:sync')" to="/runtime/sync">{{ t("nav.sync") }}</router-link>
         <router-link v-if="auth.can('basic:project:list')" to="/basic/projects">{{ t("nav.projects") }}</router-link>
         <router-link v-if="auth.can('basic:datasource:list')" to="/basic/datasources">{{ t("nav.datasources") }}</router-link>

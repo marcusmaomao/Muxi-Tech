@@ -8,6 +8,8 @@ import java.util.List;
 public interface BranchCatalog {
     CatalogSnapshot snapshot(long branchId);
 
+    long headRevision(long branchId);
+
     record CatalogElement(String uid, String type, String apiName, String ownerUid, String payload) {}
 
     record CatalogSnapshot(String namespace, List<CatalogElement> elements, long projectId) {}

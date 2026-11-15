@@ -13,11 +13,11 @@ import cn.muxicloud.mop.model.api.BranchCatalog;
 import cn.muxicloud.mop.model.api.BranchCatalog.CatalogElement;
 import cn.muxicloud.mop.model.api.BranchCatalog.CatalogSnapshot;
 import cn.muxicloud.mop.model.form.ElementRules;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.NameConflict;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.PropNode;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.Report;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.TypeNode;
+import cn.muxicloud.mop.model.api.EffectiveProperties;
+import cn.muxicloud.mop.model.api.EffectiveProperties.NameConflict;
+import cn.muxicloud.mop.model.api.EffectiveProperties.PropNode;
+import cn.muxicloud.mop.model.api.EffectiveProperties.Report;
+import cn.muxicloud.mop.model.api.EffectiveProperties.TypeNode;
 import cn.muxicloud.mop.model.entity.ProjectEntity;
 import cn.muxicloud.mop.model.entity.ProjectMemberEntity;
 import cn.muxicloud.mop.model.mapper.BranchMapper;
@@ -219,6 +219,15 @@ public class ModelService implements BranchCatalog, ElementWriter {
                 .map(row -> new CatalogElement(row.getUid(), row.getElementType(), row.getApiName(), row.getOwnerUid(), row.getPayload()))
                 .toList();
         return new CatalogSnapshot(project.getNamespace(), rows, project.getId());
+    }
+
+    @Override
+    public long headRevision(long branchId) {
+        BranchEntity branch = branchMapper.selectById(branchId);
+        if (branch == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        return branch.getHeadRev() == null ? 0L : branch.getHeadRev();
     }
 
     public List<ElementEntity> elements(Long branchId, String type) {

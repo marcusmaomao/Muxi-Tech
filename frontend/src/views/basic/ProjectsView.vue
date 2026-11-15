@@ -116,6 +116,7 @@ onMounted(() => {
             <router-link :to="`/model/${row.id}`" :data-testid="`model-${row.code}`">建模</router-link>
             <router-link :to="`/model/${row.id}/canvas`" :data-testid="`canvas-${row.code}`">画布</router-link>
             <router-link :to="`/model/${row.id}/cq`" :data-testid="`cq-${row.code}`">测试</router-link>
+            <router-link :to="`/model/${row.id}/quality`" :data-testid="`quality-${row.code}`">质量</router-link>
           </template>
         </el-table-column>
       </el-table>

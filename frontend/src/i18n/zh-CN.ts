@@ -16,6 +16,7 @@ export default {
     versions: "版本",
     canvas: "画布",
     semantic: "能力问题",
+    quality: "质量",
     runtime: "运行时",
     sync: "同步",
     projects: "项目",

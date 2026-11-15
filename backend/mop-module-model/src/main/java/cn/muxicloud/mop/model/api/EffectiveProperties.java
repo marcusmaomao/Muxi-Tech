@@ -1,4 +1,4 @@
-package cn.muxicloud.mop.model.inherit;
+package cn.muxicloud.mop.model.api;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

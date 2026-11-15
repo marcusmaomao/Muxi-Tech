@@ -14,6 +14,7 @@ public enum ErrorCode {
     PROP_CONFLICT("MOP-2004", "同名属性冲突", 409),
     REFERENCED("MOP-2005", "元素仍被引用，不能删除", 409),
     MERGE_CONFLICT("MOP-2101", "合并冲突", 409),
+    RELEASE_GATE("MOP-2201", "发布门禁未通过", 400),
     CQ_REQUIRED("MOP-2006", "对象或关系必须关联至少一个能力问题", 400),
     SYNC_FAILED("MOP-3001", "同步失败", 500),
     FILE_TOO_LARGE("MOP-3002", "文件超过 50MB", 400),
