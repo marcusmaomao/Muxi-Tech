@@ -5,7 +5,7 @@ const username = process.env.E2E_USERNAME ?? "admin";
 const password = process.env.E2E_PASSWORD ?? "demo-admin";
 const stamp = Date.now().toString(36);
 
-test("quality center blocks release while a class is unsatisfiable and allows it after the axiom is removed", async ({ page }) => {
+test("E2E-07 quality center blocks release while a class is unsatisfiable and allows it after the axiom is removed", async ({ page }) => {
   await new LoginPage(page).signIn(username, password);
   await page.locator("aside").getByRole("link", { name: "项目" }).click();
   await page.getByTestId("project-code").locator("input").fill(`qual-${stamp}`);

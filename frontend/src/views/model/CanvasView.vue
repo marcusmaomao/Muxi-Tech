@@ -32,6 +32,8 @@ interface NodeData {
 
 interface ListedNode extends NodeData {
   id: string;
+  x: number;
+  y: number;
 }
 
 interface CqRow {
@@ -63,7 +65,9 @@ const selectedId = ref("");
 const panelName = ref("");
 const panelApi = ref("");
 const panelCq = ref("");
-const panelParent = ref("");
+const panelParents = ref<string[]>([]);
+const panelLink = ref("");
+let ignoreStencilClickUntil = 0;
 const graphHost = ref<HTMLElement | null>(null);
 const mapHost = ref<HTMLElement | null>(null);
 const stencilHost = ref<HTMLElement | null>(null);
@@ -109,7 +113,14 @@ function sync() {
   }
   nodes.value = graph.getNodes().map((node) => {
     const data = dataOf(node);
-    return { id: node.id, ...data, invalid: missingCq(data) ? "缺少能力问题" : "" };
+    const position = node.position();
+    return {
+      id: node.id,
+      ...data,
+      x: Math.round(position.x),
+      y: Math.round(position.y),
+      invalid: missingCq(data) ? "缺少能力问题" : "",
+    };
   });
   edges.value = graph.getEdges().map((edge) => {
     const source = graph?.getCellById(edge.getSourceCellId() ?? "") as Node | null;
@@ -191,7 +202,7 @@ function remember() {
   future.length = 0;
 }
 
-function addDraft(kind: NodeData["kind"]) {
+function addDraft(kind: NodeData["kind"], x?: number, y?: number) {
   if (!graph) {
     return;
   }
@@ -201,8 +212,8 @@ function addDraft(kind: NodeData["kind"]) {
   const displayName = kind === "OBJECT_TYPE" ? `新对象${seq}` : kind === "ENUM_TYPE" ? `新枚举${seq}` : `注释${seq}`;
   const node = graph.batchUpdate("add-draft", () => graph?.addNode({
     id: `draft-${seq}`,
-    x: 72 + ((seq - 1) % 3) * 210,
-    y: 72 + Math.floor((seq - 1) / 3) * 120,
+    x: x ?? 72 + ((seq - 1) % 3) * 210,
+    y: y ?? 72 + Math.floor((seq - 1) / 3) * 120,
     width: 180,
     height: 64,
     attrs: {
@@ -253,8 +264,8 @@ function select(id: string) {
   panelName.value = data.displayName;
   panelApi.value = data.apiName;
   panelCq.value = data.cqUid;
-  const parent = data.parents[0];
-  panelParent.value = parent ?? "";
+  panelParents.value = [...data.parents];
+  panelLink.value = "";
   graph?.getNodes().forEach(paint);
   lockState.value = "";
 }
@@ -286,11 +297,8 @@ function applyPanel() {
   }
   const node = graph.getCellById(selectedId.value) as Node;
   const data = dataOf(node);
-  if (panelParent.value === node.id) {
-    message.value = "不能把自己设为父类";
-    return;
-  }
-  if (panelParent.value && wouldCycle(node.id, panelParent.value)) {
+  const parents = panelParents.value.filter((id) => id && id !== node.id);
+  if (parents.some((parent) => wouldCycle(node.id, parent))) {
     message.value = "继承环";
     return;
   }
@@ -300,14 +308,14 @@ function applyPanel() {
     data.apiName = panelApi.value.trim() || data.apiName;
   }
   data.cqUid = panelCq.value;
-  data.parents = panelParent.value ? [panelParent.value] : [];
+  data.parents = parents;
   node.setData(data);
   paint(node);
   graph.getEdges().filter((edge) => edge.getSourceCellId() === node.id && (edge.getData() as { kind?: string })?.kind !== "LINK").forEach((edge) => edge.remove());
-  if (panelParent.value) {
-    graph.addEdge({
+  parents.forEach((parent) => {
+    graph?.addEdge({
       source: node.id,
-      target: panelParent.value,
+      target: parent,
       attrs: {
         line: {
           stroke: "#1c5c4e",
@@ -317,9 +325,57 @@ function applyPanel() {
       },
       data: { kind: "EXTENDS" },
     });
-  }
+  });
   message.value = "已应用到画布";
   sync();
+}
+
+function applyLink() {
+  if (!graph || !selectedId.value || !panelLink.value || panelLink.value === selectedId.value) {
+    message.value = "请选择两个不同的类来连接关系";
+    return;
+  }
+  const exists = graph.getEdges().some((edge) => edge.getSourceCellId() === selectedId.value && edge.getTargetCellId() === panelLink.value && (edge.getData() as { kind?: string })?.kind === "LINK");
+  if (exists) {
+    message.value = "关系已在画布上";
+    return;
+  }
+  remember();
+  const linkName = `Link${graph.getEdges().filter((edge) => (edge.getData() as { kind?: string } | undefined)?.kind === "LINK").length + 1}`;
+  graph.addEdge({
+    source: selectedId.value,
+    target: panelLink.value,
+    attrs: {
+      line: { stroke: "#8a5a2a", strokeWidth: 1.6, strokeDasharray: "6 4", targetMarker: { name: "block", width: 12, height: 8 } },
+    },
+    data: { kind: "LINK", committed: false, apiName: linkName },
+  });
+  message.value = "已连接关系";
+  sync();
+}
+
+function onStencilDragStart(event: DragEvent, kind: NodeData["kind"]) {
+  event.dataTransfer?.setData("text/plain", kind);
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "copy";
+  }
+}
+
+function onStencilClick(kind: NodeData["kind"]) {
+  if (Date.now() < ignoreStencilClickUntil) {
+    return;
+  }
+  addDraft(kind);
+}
+
+function onGraphDrop(event: DragEvent) {
+  const kind = event.dataTransfer?.getData("text/plain") as NodeData["kind"] | undefined;
+  if (!kind || !graphHost.value) {
+    return;
+  }
+  ignoreStencilClickUntil = Date.now() + 400;
+  const bounds = graphHost.value.getBoundingClientRect();
+  addDraft(kind, event.clientX - bounds.left, event.clientY - bounds.top);
 }
 
 async function createCq() {
@@ -387,6 +443,32 @@ async function commitCanvas() {
         cqUids: [data.cqUid],
         parentUids,
       });
+    }
+    for (const edge of graph.getEdges()) {
+      const edgeData = edge.getData() as { kind?: string; committed?: boolean; apiName?: string } | undefined;
+      if (edgeData?.kind !== "LINK" || edgeData.committed) {
+        continue;
+      }
+      const source = graph.getCellById(edge.getSourceCellId() ?? "") as Node | null;
+      const target = graph.getCellById(edge.getTargetCellId() ?? "") as Node | null;
+      if (!source || !target) {
+        continue;
+      }
+      const from = dataOf(source);
+      const to = dataOf(target);
+      if (!from.serverUid || !to.serverUid || !from.cqUid) {
+        continue;
+      }
+      await http.post(`/branches/${branchId.value}/link-types`, {
+        displayName: edgeData.apiName ?? "关系",
+        apiName: edgeData.apiName ?? `Link${seq}`,
+        sourceUid: from.serverUid,
+        targetUid: to.serverUid,
+        cardinality: "MANY_TO_ONE",
+        invertible: false,
+        cqUids: [from.cqUid],
+      });
+      edge.setData({ ...edgeData, committed: true });
     }
     message.value = "已提交";
     sync();
@@ -657,14 +739,14 @@ void (async () => {
       </div>
       <div class="workspace">
         <aside class="stencil" data-testid="stencil">
-          <button type="button" data-testid="stencil-object" :disabled="!ready" @click="addDraft('OBJECT_TYPE')">对象类型</button>
+          <button type="button" data-testid="stencil-object" draggable="true" :disabled="!ready" @dragstart="onStencilDragStart($event, 'OBJECT_TYPE')" @click="onStencilClick('OBJECT_TYPE')">对象类型</button>
           <span v-if="ready" data-testid="canvas-ready"></span>
-          <button type="button" data-testid="stencil-enum" @click="addDraft('ENUM_TYPE')">枚举</button>
-          <button type="button" data-testid="stencil-note" @click="addDraft('NOTE')">注释</button>
+          <button type="button" data-testid="stencil-enum" draggable="true" @dragstart="onStencilDragStart($event, 'ENUM_TYPE')" @click="onStencilClick('ENUM_TYPE')">枚举</button>
+          <button type="button" data-testid="stencil-note" draggable="true" @dragstart="onStencilDragStart($event, 'NOTE')" @click="onStencilClick('NOTE')">注释</button>
           <div ref="stencilHost" class="stencil-host"></div>
         </aside>
         <div class="stage">
-          <div ref="graphHost" class="graph" data-testid="canvas-graph"></div>
+          <div ref="graphHost" class="graph" data-testid="canvas-graph" @dragover.prevent @drop.prevent="onGraphDrop"></div>
           <div ref="mapHost" class="map" data-testid="canvas-minimap"></div>
         </div>
         <aside class="panel" data-testid="canvas-panel">
@@ -678,18 +760,24 @@ void (async () => {
             </select>
           </label>
           <label>父类
-            <select v-model="panelParent" data-testid="canvas-parent">
-              <option value="">无</option>
+            <select v-model="panelParents" multiple data-testid="canvas-parent">
               <option v-for="node in nodes.filter((item) => item.id !== selectedId)" :key="node.id" :value="node.id">{{ node.displayName }}</option>
             </select>
           </label>
+          <label>关系终点
+            <select v-model="panelLink" data-testid="canvas-link-target">
+              <option value="">不连接</option>
+              <option v-for="node in nodes.filter((item) => item.id !== selectedId && item.kind === 'OBJECT_TYPE')" :key="node.id" :value="node.id">{{ node.displayName }}</option>
+            </select>
+          </label>
           <button type="button" data-testid="apply-node" @click="applyPanel">应用到画布</button>
+          <button type="button" data-testid="apply-link" @click="applyLink">连接关系</button>
           <button type="button" data-testid="lock-node" @click="lockSelected">锁定</button>
           <p data-testid="lock-state">{{ lockState }}</p>
         </aside>
       </div>
       <ul data-testid="canvas-nodes">
-        <li v-for="node in nodes" :key="node.id" :data-testid="`node-${node.apiName}`" @click="select(node.id)">
+        <li v-for="node in nodes" :key="node.id" :data-testid="`node-${node.apiName}`" :data-x="node.x" :data-y="node.y" @click="select(node.id)">
           {{ node.displayName }}
           <span v-if="node.invalid" data-testid="validation-mark">{{ node.invalid }}</span>
         </li>
