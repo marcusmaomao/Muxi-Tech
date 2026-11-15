@@ -1,0 +1,20 @@
+{
+  "priority": 2,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/chat/completions",
+    "bodyPatterns": [{ "contains": "抽取：1" }]
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "choices": [{
+        "message": {
+          "role": "assistant",
+          "content": "{\"entities\":[{\"type\":\"Equipment\",\"name\":\"一号变压器\",\"props\":{\"equipmentName\":\"一号变压器\"},\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.9},{\"type\":\"Substation\",\"name\":\"城东站\",\"props\":{\"stationName\":\"城东站\"},\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.8}],\"links\":[{\"type\":\"installedAt\",\"from\":\"一号变压器\",\"to\":\"城东站\",\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.85}]}"
+        }
+      }]
+    }
+  }
+}

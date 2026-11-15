@@ -16,7 +16,7 @@ public final class TenantCypherGuard {
             OPTIONAL MATCH (existing:MopObject { _t: $tenant, _type: row.type, _pk: row.pk })
             WITH row, existing
             MERGE (n:MopObject { _t: $tenant, _type: row.type, _pk: row.pk })
-            SET n._rid = row.rid, n._src = 'SYNC', n.propsJson = row.propsJson, n._updatedAt = datetime()
+            SET n._rid = row.rid, n._src = row.src, n.propsJson = row.propsJson, n._updatedAt = datetime()
             RETURN sum(CASE WHEN existing IS NULL THEN 1 ELSE 0 END) AS inserted,
                    sum(CASE WHEN existing IS NULL THEN 0 ELSE 1 END) AS updated
             """;
@@ -26,7 +26,7 @@ public final class TenantCypherGuard {
             MATCH (a:MopObject { _t: $tenant, _type: link.fromType, _pk: link.fromPk })
             MATCH (b:MopObject { _t: $tenant, _type: link.toType, _pk: link.toPk })
             MERGE (a)-[r:MOP_LINK { _t: $tenant, _link: link.linkType, _key: link.key }]->(b)
-            SET r._src = 'SYNC'
+            SET r._src = link.src
             RETURN count(r) AS linked
             """;
 
@@ -35,6 +35,13 @@ public final class TenantCypherGuard {
             WHERE n._t = $tenant AND n._type = $type
             RETURN n._pk AS pk, n.propsJson AS propsJson
             ORDER BY pk
+            """;
+
+    public static final String READ_NEIGHBORS = """
+            MATCH (n:MopObject { _t: $tenant, _type: $type, _pk: $pk })
+            OPTIONAL MATCH (n)-[r:MOP_LINK { _t: $tenant }]-(m:MopObject { _t: $tenant })
+            RETURN n._type AS type, n._pk AS pk, n.propsJson AS propsJson,
+                   r._link AS link, m._type AS neighborType, m._pk AS neighborPk, m.propsJson AS neighborProps
             """;
 
     private TenantCypherGuard() {

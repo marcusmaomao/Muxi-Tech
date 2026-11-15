@@ -206,6 +206,10 @@ public class MappingService {
         return graph.objects(type);
     }
 
+    public GraphWriter.Neighborhood neighbors(String type, String pk) {
+        return graph.neighbors(type, pk);
+    }
+
     private List<PreviewLink> linkViews(RtMappingEntity mapping, StoredMapping stored, String pk, Map<String, String> row) {
         List<PreviewLink> links = new ArrayList<>();
         for (StoredLink link : stored.links()) {

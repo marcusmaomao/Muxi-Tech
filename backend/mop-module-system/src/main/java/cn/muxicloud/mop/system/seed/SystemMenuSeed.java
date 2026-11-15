@@ -58,7 +58,9 @@ public class SystemMenuSeed implements ApplicationRunner {
             {"测试模型", "", "BUTTON", "ai:model:test", "152"},
             {"调用模型", "", "BUTTON", "ai:chat", "153"},
             {"AI 建模", "/ai/modeling", "MENU", "ai:model:edit", "160"},
-            {"同步", "/runtime/sync", "MENU", "runtime:sync", "170"}
+            {"同步", "/runtime/sync", "MENU", "runtime:sync", "170"},
+            {"抽取", "/ai/extraction", "MENU", "ai:model:edit", "180"},
+            {"图谱", "/runtime/graph", "MENU", "runtime:sync", "190"}
     };
 
     private final DemoSeedProperties properties;

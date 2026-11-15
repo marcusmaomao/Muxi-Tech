@@ -71,6 +71,12 @@ public class SyncController {
         return ApiResponse.ok(mappings.objects(type));
     }
 
+    @GetMapping("/graph/neighbors")
+    @RequiresPermission("runtime:sync")
+    public ApiResponse<GraphWriter.Neighborhood> neighbors(@RequestParam String type, @RequestParam String pk) {
+        return ApiResponse.ok(mappings.neighbors(type, pk));
+    }
+
     private static AuthenticatedUser user(Authentication authentication) {
         return (AuthenticatedUser) authentication.getPrincipal();
     }

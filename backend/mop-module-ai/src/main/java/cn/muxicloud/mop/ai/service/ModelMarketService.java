@@ -3,14 +3,17 @@ package cn.muxicloud.mop.ai.service;
 import cn.muxicloud.mop.ai.config.AiKeyProperties;
 import cn.muxicloud.mop.ai.crypto.KeyCipher;
 import cn.muxicloud.mop.ai.entity.AiCandidateEntity;
+import cn.muxicloud.mop.ai.entity.AiExtractionItemEntity;
 import cn.muxicloud.mop.ai.entity.AiEvidenceEntity;
 import cn.muxicloud.mop.ai.entity.AiJobEntity;
 import cn.muxicloud.mop.ai.entity.AiJobEventEntity;
 import cn.muxicloud.mop.ai.entity.AiModelEntity;
 import cn.muxicloud.mop.ai.entity.AiUsageEntity;
+import cn.muxicloud.mop.ai.extract.ExtractionPipeline;
 import cn.muxicloud.mop.ai.gateway.ModelRateLimiter;
 import cn.muxicloud.mop.ai.gateway.OpenAiChatClient;
 import cn.muxicloud.mop.ai.mapper.AiCandidateMapper;
+import cn.muxicloud.mop.ai.mapper.AiExtractionItemMapper;
 import cn.muxicloud.mop.ai.mapper.AiEvidenceMapper;
 import cn.muxicloud.mop.ai.mapper.AiJobEventMapper;
 import cn.muxicloud.mop.ai.mapper.AiJobMapper;
@@ -25,6 +28,7 @@ import cn.muxicloud.mop.model.api.ElementWriter;
 import cn.muxicloud.mop.security.AuthenticatedUser;
 import cn.muxicloud.mop.tenant.TenantContext;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -32,8 +36,14 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,9 +67,11 @@ public class ModelMarketService {
     private final AiEvidenceMapper evidenceMapper;
     private final AiCandidateMapper candidateMapper;
     private final AiJobEventMapper eventMapper;
+    private final AiExtractionItemMapper extractionItemMapper;
     private final OpenAiChatClient client = new OpenAiChatClient();
     private final ObjectMapper json = new ObjectMapper();
     private final RoundPlanner planner = new RoundPlanner();
+    private final ExtractionPipeline extraction = new ExtractionPipeline();
     private final ExecutorService workers = Executors.newCachedThreadPool();
     private final ConcurrentHashMap<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
 
@@ -74,7 +86,8 @@ public class ModelMarketService {
             AiJobMapper jobMapper,
             AiEvidenceMapper evidenceMapper,
             AiCandidateMapper candidateMapper,
-            AiJobEventMapper eventMapper) {
+            AiJobEventMapper eventMapper,
+            AiExtractionItemMapper extractionItemMapper) {
         this.modelMapper = modelMapper;
         this.usageMapper = usageMapper;
         this.rateLimiter = rateLimiter;
@@ -86,6 +99,7 @@ public class ModelMarketService {
         this.evidenceMapper = evidenceMapper;
         this.candidateMapper = candidateMapper;
         this.eventMapper = eventMapper;
+        this.extractionItemMapper = extractionItemMapper;
     }
 
     public List<ModelView> list() {
@@ -634,6 +648,187 @@ public class ModelMarketService {
         return candidate;
     }
 
+    public AiJobEntity extract(long projectId, long branchId, long fileId, long modelId, AuthenticatedUser actor) {
+        DocumentText.Extracted document = documents.read(fileId);
+        ExtractionPipeline.Index index = ontology(branchId);
+        if (index.types().isEmpty()) {
+            throw new MopException(ErrorCode.VALIDATION, "当前本体还没有对象类型", null);
+        }
+        AiJobEntity job = new AiJobEntity();
+        job.setTenantId(actor.tenantId());
+        job.setProjectId(projectId);
+        job.setBranchId(branchId);
+        job.setFileId(fileId);
+        job.setModelId(modelId);
+        job.setKind("EXTRACTION");
+        job.setStatus("RUNNING");
+        job.setStage("EXTRACT");
+        job.setPromptVersion("v1");
+        job.setCreatedBy(actor.userId());
+        job.setCreatedAt(LocalDateTime.now());
+        jobMapper.insert(job);
+        String schemaText = extraction.schemaText(index);
+        String output = ask(job, "EXTRACT", extraction.prompt(schemaText, document.text()), actor);
+        List<ExtractionPipeline.Draft> drafts = extraction.interpret(output, document.text(), index);
+        if (drafts.stream().anyMatch(item -> "JSON_INVALID".equals(item.reason()) || "JSON_SCHEMA".equals(item.reason()))) {
+            output = ask(job, "EXTRACT", extraction.prompt(schemaText, document.text()), actor);
+            drafts = extraction.interpret(output, document.text(), index);
+        }
+        for (ExtractionPipeline.Draft draft : drafts) {
+            AiExtractionItemEntity item = new AiExtractionItemEntity();
+            item.setTenantId(actor.tenantId());
+            item.setJobId(job.getId());
+            item.setKind(draft.kind());
+            item.setPayload(payloadOf(draft));
+            item.setEvidenceQuote(draft.evidence().length() <= 1000 ? draft.evidence() : draft.evidence().substring(0, 1000));
+            item.setConfidence(draft.confidence());
+            item.setReason(draft.reason());
+            item.setState(draft.state());
+            extractionItemMapper.insert(item);
+        }
+        job.setStatus("SUCCEEDED");
+        job.setStage("REVIEW");
+        job.setFinishedAt(LocalDateTime.now());
+        jobMapper.updateById(job);
+        return job;
+    }
+
+    public List<AiExtractionItemEntity> extractionItems(long jobId) {
+        requiredJob(jobId);
+        return extractionItemMapper.selectList(new LambdaQueryWrapper<AiExtractionItemEntity>().eq(AiExtractionItemEntity::getJobId, jobId).orderByAsc(AiExtractionItemEntity::getId));
+    }
+
+    public AiExtractionItemEntity reviewExtraction(long itemId, boolean accept) {
+        AiExtractionItemEntity item = requiredExtraction(itemId);
+        if (!"REVIEW".equals(item.getState())) {
+            throw new MopException(ErrorCode.VALIDATION, "只有待审核结果可以通过或驳回", null);
+        }
+        item.setState(accept ? "ACCEPTED" : "REJECTED");
+        extractionItemMapper.updateById(item);
+        return item;
+    }
+
+    public PublishBatch publicationBatch(long jobId) {
+        List<PublishEntity> entities = new ArrayList<>();
+        List<PublishLink> links = new ArrayList<>();
+        Map<String, String> types = new HashMap<>();
+        for (AiExtractionItemEntity item : extractionItems(jobId)) {
+            if (!"ACCEPTED".equals(item.getState())) {
+                continue;
+            }
+            JsonNode payload = readPayload(item);
+            if ("ENTITY".equals(item.getKind())) {
+                Map<String, String> props = new LinkedHashMap<>();
+                payload.path("props").fields().forEachRemaining(entry -> props.put(entry.getKey(), entry.getValue().asText("")));
+                props.put("_evidence", item.getEvidenceQuote());
+                String name = payload.path("name").asText();
+                String type = payload.path("type").asText();
+                entities.add(new PublishEntity(type, name, props));
+                types.put(name, type);
+            }
+        }
+        for (AiExtractionItemEntity item : extractionItems(jobId)) {
+            if (!"ACCEPTED".equals(item.getState()) || !"LINK".equals(item.getKind())) {
+                continue;
+            }
+            JsonNode payload = readPayload(item);
+            String from = payload.path("from").asText();
+            String to = payload.path("to").asText();
+            if (!types.containsKey(from) || !types.containsKey(to)) {
+                continue;
+            }
+            links.add(new PublishLink(payload.path("type").asText(), types.get(from), from, types.get(to), to));
+        }
+        if (entities.isEmpty()) {
+            throw new MopException(ErrorCode.VALIDATION, "没有已通过审核的抽取结果", null);
+        }
+        return new PublishBatch(entities, links);
+    }
+
+    public void markPublished(long jobId) {
+        for (AiExtractionItemEntity item : extractionItems(jobId)) {
+            if ("ACCEPTED".equals(item.getState())) {
+                item.setState("PUBLISHED");
+                extractionItemMapper.updateById(item);
+            }
+        }
+        AiJobEntity job = requiredJob(jobId);
+        job.setStage("PUBLISHED");
+        jobMapper.updateById(job);
+    }
+
+    private ExtractionPipeline.Index ontology(long branchId) {
+        Map<String, String> typeByUid = new HashMap<>();
+        Map<String, Set<String>> properties = new LinkedHashMap<>();
+        for (BranchCatalog.CatalogElement element : catalog.snapshot(branchId).elements()) {
+            if ("OBJECT_TYPE".equals(element.type())) {
+                typeByUid.put(element.uid(), element.apiName());
+                properties.put(element.apiName(), new LinkedHashSet<>());
+            }
+        }
+        for (BranchCatalog.CatalogElement element : catalog.snapshot(branchId).elements()) {
+            if ("PROPERTY".equals(element.type())) {
+                String owner = typeByUid.get(element.ownerUid());
+                if (owner != null) {
+                    properties.get(owner).add(element.apiName());
+                }
+            }
+        }
+        Map<String, ExtractionPipeline.TypeSpec> types = new LinkedHashMap<>();
+        properties.forEach((name, props) -> types.put(name, new ExtractionPipeline.TypeSpec(name, props)));
+        Map<String, ExtractionPipeline.LinkSpec> links = new LinkedHashMap<>();
+        for (BranchCatalog.CatalogElement element : catalog.snapshot(branchId).elements()) {
+            if (!"LINK_TYPE".equals(element.type())) {
+                continue;
+            }
+            try {
+                JsonNode payload = json.readTree(element.payload() == null ? "{}" : element.payload());
+                String source = typeByUid.get(payload.path("sourceUid").asText());
+                String target = typeByUid.get(payload.path("targetUid").asText());
+                if (source != null && target != null) {
+                    links.put(element.apiName(), new ExtractionPipeline.LinkSpec(element.apiName(), source, target));
+                }
+            } catch (Exception ex) {
+                throw new MopException(ErrorCode.VALIDATION, "关系定义无法读取", null);
+            }
+        }
+        return new ExtractionPipeline.Index(types, links);
+    }
+
+    private String payloadOf(ExtractionPipeline.Draft draft) {
+        try {
+            ObjectNode payload = json.createObjectNode();
+            payload.put("type", draft.typeName());
+            if ("ENTITY".equals(draft.kind())) {
+                payload.put("name", draft.name());
+                ObjectNode props = payload.putObject("props");
+                draft.props().forEach(props::put);
+            } else {
+                payload.put("from", draft.from());
+                payload.put("to", draft.to());
+            }
+            return payload.toString();
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "抽取结果无法保存", null);
+        }
+    }
+
+    private JsonNode readPayload(AiExtractionItemEntity item) {
+        try {
+            return json.readTree(item.getPayload());
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "抽取结果无法读取", null);
+        }
+    }
+
+    private AiExtractionItemEntity requiredExtraction(long itemId) {
+        AiExtractionItemEntity item = extractionItemMapper.selectById(itemId);
+        if (item == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        return item;
+    }
+
     private static String sha(String text) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
@@ -653,4 +848,10 @@ public class ModelMarketService {
     public record Probe(boolean ok, String message, int promptTokens, int completionTokens, long elapsedMs) {}
 
     public record ChatView(boolean ok, String content, int promptTokens, int completionTokens, long elapsedMs) {}
+
+    public record PublishEntity(String type, String name, Map<String, String> props) {}
+
+    public record PublishLink(String type, String fromType, String from, String toType, String to) {}
+
+    public record PublishBatch(List<PublishEntity> entities, List<PublishLink> links) {}
 }
