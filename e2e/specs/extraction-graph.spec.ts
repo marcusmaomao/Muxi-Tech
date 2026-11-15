@@ -5,7 +5,7 @@ const username = process.env.E2E_USERNAME ?? "admin";
 const password = process.env.E2E_PASSWORD ?? "demo-admin";
 const stamp = Date.now().toString(36);
 
-test("review an extraction and expand its neighbor on the graph", async ({ page }) => {
+test("E2E-15 extraction review publishes evidence that the graph can expand", async ({ page }) => {
   test.setTimeout(90_000);
   await new LoginPage(page).signIn(username, password);
   await page.locator("aside").getByRole("link", { name: "项目" }).click();
@@ -21,21 +21,21 @@ test("review an extraction and expand its neighbor on the graph", async ({ page 
   await expect(page.getByTestId("element-list")).toContainText("有哪些设备");
   await page.getByTestId("kind-OBJECT_TYPE").click();
   await page.getByTestId("element-cq").selectOption({ label: "有哪些设备" });
-  await page.getByTestId("element-name").locator("input").fill("设备");
-  await page.getByTestId("element-api").locator("input").fill("Equipment");
+  await page.getByTestId("element-name").locator("input").fill("变压器");
+  await page.getByTestId("element-api").locator("input").fill("Transformer");
   await page.getByTestId("create-element").click();
-  await expect(page.getByTestId("element-list")).toContainText("设备");
+  await expect(page.getByTestId("element-list")).toContainText("变压器");
   await page.getByTestId("element-name").locator("input").fill("变电站");
   await page.getByTestId("element-api").locator("input").fill("Substation");
   await page.getByTestId("create-element").click();
   await expect(page.getByTestId("element-list")).toContainText("变电站");
 
   await page.getByTestId("kind-PROPERTY").click();
-  await page.getByTestId("element-name").locator("input").fill("设备名");
-  await page.getByTestId("element-api").locator("input").fill("equipmentName");
-  await page.getByTestId("element-owner").selectOption({ label: "设备" });
+  await page.getByTestId("element-name").locator("input").fill("变压器名");
+  await page.getByTestId("element-api").locator("input").fill("transformerName");
+  await page.getByTestId("element-owner").selectOption({ label: "变压器" });
   await page.getByTestId("create-element").click();
-  await expect(page.getByTestId("element-list")).toContainText("设备名");
+  await expect(page.getByTestId("element-list")).toContainText("变压器名");
   await page.getByTestId("element-name").locator("input").fill("站名");
   await page.getByTestId("element-api").locator("input").fill("stationName");
   await page.getByTestId("element-owner").selectOption({ label: "变电站" });
@@ -45,7 +45,7 @@ test("review an extraction and expand its neighbor on the graph", async ({ page 
   await page.getByTestId("kind-LINK_TYPE").click();
   await page.getByTestId("element-name").locator("input").fill("安装于");
   await page.getByTestId("element-api").locator("input").fill("installedAt");
-  await page.getByTestId("element-owner").selectOption({ label: "设备" });
+  await page.getByTestId("element-owner").selectOption({ label: "变压器" });
   await page.getByTestId("element-target").selectOption({ label: "变电站" });
   await page.getByTestId("create-element").click();
   await expect(page.getByTestId("element-list")).toContainText("安装于");
@@ -83,7 +83,7 @@ test("review an extraction and expand its neighbor on the graph", async ({ page 
 
   await page.locator("aside").getByRole("link", { name: "图谱" }).click();
   await page.getByTestId("graph-project").selectOption({ label: `抽取${stamp}` });
-  await page.getByTestId("graph-type").selectOption("Equipment");
+  await page.getByTestId("graph-type").selectOption("Transformer");
   await expect(page.getByTestId("graph-nodes")).toContainText("一号变压器");
   await page.getByTestId("expand-一号变压器").click();
   await expect(page.getByTestId("graph-neighbors")).toContainText("城东站");

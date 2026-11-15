@@ -20,10 +20,28 @@ const domain = ref("");
 const scopeInclude = ref("");
 const scopeExclude = ref("");
 const message = ref("");
+const users = ref<{ id: string; username: string }[]>([]);
+const memberProjectId = ref("");
+const memberUserId = ref("");
+const memberRole = ref("EDITOR");
 
 async function load() {
   const response = await http.get<{ data: ProjectRow[] }>("/projects");
   rows.value = response.data.data ?? [];
+  try {
+    const userResponse = await http.get<{ data: { records: { id: string; username: string }[] } }>("/system/users");
+    users.value = userResponse.data.data?.records ?? [];
+  } catch {
+    users.value = [];
+  }
+}
+
+async function addMember() {
+  const current = await http.get<{ data: { userId: string; memberRole: string }[] }>(`/projects/${memberProjectId.value}/members`);
+  const members = (current.data.data ?? []).map((member) => ({ userId: member.userId, role: member.memberRole }));
+  members.push({ userId: memberUserId.value, role: memberRole.value });
+  await http.put(`/projects/${memberProjectId.value}/members`, { members });
+  message.value = "成员已加入";
 }
 
 async function createProject() {
@@ -70,6 +88,22 @@ onMounted(() => {
       <span data-testid="project-exclude"><el-input v-model="scopeExclude" placeholder="范围排除" /></span>
       <el-button native-type="submit" type="primary" data-testid="create-project">新建</el-button>
       <span class="hint">{{ message }}</span>
+    </form>
+    <form class="form-grid" data-testid="member-form" @submit.prevent="addMember">
+      <select v-model="memberProjectId" data-testid="member-project">
+        <option value="">项目</option>
+        <option v-for="row in rows" :key="row.id" :value="row.id">{{ row.name }}</option>
+      </select>
+      <select v-model="memberUserId" data-testid="member-user">
+        <option value="">用户</option>
+        <option v-for="user in users" :key="user.id" :value="user.id">{{ user.username }}</option>
+      </select>
+      <select v-model="memberRole" data-testid="member-role">
+        <option value="EDITOR">EDITOR</option>
+        <option value="VIEWER">VIEWER</option>
+        <option value="OWNER">OWNER</option>
+      </select>
+      <el-button native-type="submit" data-testid="add-member">加入项目</el-button>
     </form>
     <div data-testid="project-table">
       <el-table :data="rows">

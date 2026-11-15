@@ -10,6 +10,7 @@
 
 - [产品需求](docs/MUXI-ONT-PRD-001.md)
 - [技术开发文档](docs/MUXI-ONT-TD-001.md)
+- [本地演示指南](docs/DEMO.md)
 
 ## 本地启动
 

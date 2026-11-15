@@ -80,8 +80,16 @@ async function loadObjects() {
   render(rows.value.map((row) => ({ id: `${typeName.value}:${row.pk}`, label: row.pk })), []);
 }
 
+function objectLabel(row: GraphObject) {
+  const text = Object.entries(row.props ?? {})
+    .filter(([key]) => !key.startsWith("_"))
+    .map(([, value]) => value)
+    .find((value) => value);
+  return text ? `${text} · ${row.pk}` : row.pk;
+}
+
 function show(row: GraphObject) {
-  detail.value = `${row.pk}\n${row.props._evidence ?? ""}\n${JSON.stringify(row.props)}`;
+  detail.value = `${objectLabel(row)}\n${row.props._evidence ?? ""}\n${JSON.stringify(row.props)}`;
 }
 
 async function expand(row: GraphObject) {
@@ -130,7 +138,7 @@ onBeforeUnmount(() => {
     <div ref="canvas" class="canvas" data-testid="graph-canvas"></div>
     <ul data-testid="graph-nodes">
       <li v-for="row in rows" :key="row.pk">
-        <button type="button" @click="show(row)">{{ row.pk }}</button>
+        <button type="button" @click="show(row)">{{ objectLabel(row) }}</button>
         <button type="button" :data-testid="`expand-${row.pk}`" @click="expand(row)">展开邻居</button>
       </li>
     </ul>

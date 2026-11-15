@@ -12,7 +12,7 @@
       "choices": [{
         "message": {
           "role": "assistant",
-          "content": "{\"entities\":[{\"type\":\"Equipment\",\"name\":\"一号变压器\",\"props\":{\"equipmentName\":\"一号变压器\"},\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.9},{\"type\":\"Substation\",\"name\":\"城东站\",\"props\":{\"stationName\":\"城东站\"},\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.8}],\"links\":[{\"type\":\"installedAt\",\"from\":\"一号变压器\",\"to\":\"城东站\",\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.85}]}"
+          "content": "{\"entities\":[{\"type\":\"Transformer\",\"name\":\"一号变压器\",\"props\":{\"transformerName\":\"一号变压器\"},\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.9},{\"type\":\"Substation\",\"name\":\"城东站\",\"props\":{\"stationName\":\"城东站\"},\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.8}],\"links\":[{\"type\":\"installedAt\",\"from\":\"一号变压器\",\"to\":\"城东站\",\"evidence\":\"一号变压器安装在城东站\",\"confidence\":0.85}]}"
         }
       }]
     }

@@ -5,7 +5,7 @@ const username = process.env.E2E_USERNAME ?? "admin";
 const password = process.env.E2E_PASSWORD ?? "demo-admin";
 const stamp = Date.now().toString(36);
 
-test("configure a mapping, preview it, and sync it into the graph", async ({ page }) => {
+test("E2E-09 binds a MySQL table, previews, syncs, and shows the object", async ({ page }) => {
   test.setTimeout(90_000);
   await new LoginPage(page).signIn(username, password);
   await page.locator("aside").getByRole("link", { name: "项目" }).click();
@@ -42,6 +42,17 @@ test("configure a mapping, preview it, and sync it into the graph", async ({ pag
   await page.getByTestId("element-owner").selectOption({ label: "设备" });
   await page.getByTestId("create-element").click();
   await expect(page.getByTestId("element-list")).toContainText("设备名");
+  await page.getByTestId("kind-OBJECT_TYPE").click();
+  await page.getByTestId("element-name").locator("input").fill("巡检记录");
+  await page.getByTestId("element-api").locator("input").fill("Inspection");
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("巡检记录");
+  await page.getByTestId("kind-PROPERTY").click();
+  await page.getByTestId("element-name").locator("input").fill("结论");
+  await page.getByTestId("element-api").locator("input").fill("note");
+  await page.getByTestId("element-owner").selectOption({ label: "巡检记录" });
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("结论");
 
   await page.getByTestId("kind-LINK_TYPE").click();
   await page.getByTestId("element-name").locator("input").fill("安装于");
@@ -96,5 +107,30 @@ test("configure a mapping, preview it, and sync it into the graph", async ({ pag
   await page.getByTestId("sync-full").click();
   await expect(page.getByTestId("sync-runs")).toContainText("SUCCEEDED");
   await expect(page.getByTestId("sync-objects")).toContainText("一号变压器");
+
+  await page.getByTestId("sync-object").selectOption({ label: "巡检记录" });
+  await page.getByTestId("sync-table").selectOption("src_inspection");
+  await page.getByTestId("sync-pk").selectOption("id");
+  await page.getByTestId("sync-incremental-column").selectOption("updated_at");
+  await page.getByTestId("sync-property").selectOption({ label: "结论" });
+  await page.getByTestId("sync-column").selectOption("note");
+  await page.getByTestId("sync-link").selectOption("");
+  await page.getByTestId("save-mapping").click();
+  await expect(page.getByTestId("sync-message")).toContainText("已保存");
+  await page.getByTestId("sync-full").click();
+  await expect(page.getByTestId("sync-objects")).toContainText("运行正常");
+  const stampNote = `n${stamp}`.slice(0, 32);
+  const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("mop.session") || "{}").accessToken as string);
+  const inserted = await page.request.post("/api/v1/demo/grid/inspections", {
+    data: { id: stampNote, note: "新增巡检" },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(inserted.ok()).toBeTruthy();
+  await page.getByTestId("sync-incremental").click();
+  await expect(page.getByTestId("sync-objects")).toContainText("新增巡检");
+  await page.locator("aside").getByRole("link", { name: "图谱" }).click();
+  await page.getByTestId("graph-project").selectOption({ label: `同步${stamp}` });
+  await page.getByTestId("graph-type").selectOption("Inspection");
+  await expect(page.getByTestId("graph-nodes")).toContainText("新增巡检");
   await page.screenshot({ path: "test-results/sync.png", fullPage: true });
 });
