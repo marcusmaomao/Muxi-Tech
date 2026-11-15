@@ -704,6 +704,13 @@ public class ModelService implements BranchCatalog, ElementWriter {
         }
         requireEach(branch.getId(), payload.get("cqUids"), "CQ");
         requireEach(branch.getId(), payload.get("parentUids"), "OBJECT_TYPE");
+        if ("CQ_TEST".equals(type)) {
+            requireLive(branch.getId(), text(payload, "ownerUid"), "CQ");
+            String fixtureUid = text(payload, "fixtureUid");
+            if (fixtureUid != null) {
+                requireLive(branch.getId(), fixtureUid, "FIXTURE");
+            }
+        }
         if ("DATA_RULE".equals(type)) {
             requireLive(branch.getId(), text(payload, "targetObjectUid"), "OBJECT_TYPE");
             String propertyUid = text(payload, "targetPropertyUid");

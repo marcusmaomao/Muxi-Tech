@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "required": ["displayName", "apiName"],
+  "properties": {
+    "displayName": { "type": "string", "minLength": 1 },
+    "apiName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+    "turtle": { "type": "string" },
+    "objects": { "type": "array" },
+    "links": { "type": "array" }
+  },
+  "additionalProperties": true
+}

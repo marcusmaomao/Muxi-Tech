@@ -54,4 +54,4 @@ docker compose up -d --build
 
 ## 这次基线没有覆盖的部分
 
-E2E-05 已检查 Turtle 里的多重继承、`disjointWith`，以及可下载的 `shapes.ttl`。ELK 分类会标出不可满足的类。能力问题测试、质量中心和发布门禁仍在后面的任务里。
+E2E-05 已检查 Turtle 里的多重继承、`disjointWith`，以及可下载的 `shapes.ttl`。ELK 分类会标出不可满足的类。打开「能力问题」可以保存夹具和 SPARQL 用例，运行后看到覆盖率和门禁；手工标成已覆盖不会抬高覆盖率。质量中心仍在后面的任务里。
