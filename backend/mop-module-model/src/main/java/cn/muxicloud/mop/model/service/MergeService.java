@@ -102,6 +102,12 @@ public class MergeService {
         return request;
     }
 
+    public List<MergeRequestEntity> list(long projectId) {
+        return mergeRequestMapper.selectList(new LambdaQueryWrapper<MergeRequestEntity>()
+                .eq(MergeRequestEntity::getProjectId, projectId)
+                .orderByDesc(MergeRequestEntity::getId));
+    }
+
     public MergeRequestEntity get(long id) {
         MergeRequestEntity request = mergeRequestMapper.selectById(id);
         if (request == null) {
@@ -177,7 +183,7 @@ public class MergeService {
         request.setBaseRev(baseRev);
         request.setSourceRev(source.getHeadRev());
         request.setTargetRev(commit.getRev());
-        request.setConflicts(null);
+        request.setConflicts("[]");
         request.setStatus("MERGED");
         request.setMergedBy(actor.userId());
         request.setMergedAt(LocalDateTime.now());

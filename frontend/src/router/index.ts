@@ -10,6 +10,7 @@ import ProjectsView from "@/views/basic/ProjectsView.vue";
 import DatasourcesView from "@/views/basic/DatasourcesView.vue";
 import FilesView from "@/views/basic/FilesView.vue";
 import ModelingView from "@/views/model/ModelingView.vue";
+import VersionView from "@/views/model/VersionView.vue";
 import ModelsView from "@/views/ai/ModelsView.vue";
 import AiModelingView from "@/views/ai/AiModelingView.vue";
 import SyncView from "@/views/runtime/SyncView.vue";
@@ -29,6 +30,7 @@ const router = createRouter({
         { path: "basic/projects", name: "projects", component: ProjectsView },
         { path: "basic/datasources", name: "datasources", component: DatasourcesView },
         { path: "basic/files", name: "files", component: FilesView },
+        { path: "model/versions", name: "versions", component: VersionView },
         { path: "model/:projectId", name: "modeling", component: ModelingView },
         { path: "ai/models", name: "models", component: ModelsView },
         { path: "ai/modeling", name: "ai-modeling", component: AiModelingView },

@@ -53,6 +53,7 @@ public class SystemMenuSeed implements ApplicationRunner {
             {"文件", "/basic/files", "MENU", "basic:file:list", "130"},
             {"上传文件", "", "BUTTON", "basic:file:upload", "131"},
             {"建模", "/model", "MENU", "model:form:edit", "140"},
+            {"版本", "/model/versions", "MENU", "model:form:edit", "145"},
             {"模型", "/ai/models", "MENU", "ai:model:list", "150"},
             {"维护模型", "", "BUTTON", "ai:model:edit", "151"},
             {"测试模型", "", "BUTTON", "ai:model:test", "152"},

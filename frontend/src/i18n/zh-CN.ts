@@ -13,6 +13,7 @@ export default {
   nav: {
     workbench: "工作台",
     modeling: "建模",
+    versions: "版本",
     semantic: "语义",
     runtime: "运行时",
     sync: "同步",
