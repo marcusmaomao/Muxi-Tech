@@ -15,6 +15,7 @@ export default {
     modeling: "Modeling",
     semantic: "Semantic",
     runtime: "Runtime",
+    sync: "Sync",
     projects: "Projects",
     datasources: "Datasources",
     files: "Files",

@@ -15,6 +15,7 @@ export default {
     modeling: "建模",
     semantic: "语义",
     runtime: "运行时",
+    sync: "同步",
     projects: "项目",
     datasources: "数据源",
     files: "文件",

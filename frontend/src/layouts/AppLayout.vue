@@ -29,9 +29,7 @@ async function onLogout() {
         <button class="nav" type="button" disabled>
           {{ t("nav.semantic") }} <span class="soon">{{ t("nav.soon") }}</span>
         </button>
-        <button class="nav" type="button" disabled>
-          {{ t("nav.runtime") }} <span class="soon">{{ t("nav.soon") }}</span>
-        </button>
+        <router-link v-if="auth.can('runtime:sync')" to="/runtime/sync">{{ t("nav.sync") }}</router-link>
         <router-link v-if="auth.can('basic:project:list')" to="/basic/projects">{{ t("nav.projects") }}</router-link>
         <router-link v-if="auth.can('basic:datasource:list')" to="/basic/datasources">{{ t("nav.datasources") }}</router-link>
         <router-link v-if="auth.can('basic:file:list')" to="/basic/files">{{ t("nav.files") }}</router-link>

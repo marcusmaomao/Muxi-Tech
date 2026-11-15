@@ -14,7 +14,35 @@
   <dependencies>
     <dependency>
       <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-mybatis</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-fw-tenant</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
+      <artifactId>mop-module-basic</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.muxicloud.mop</groupId>
       <artifactId>mop-module-model</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.neo4j.driver</groupId>
+      <artifactId>neo4j-java-driver</artifactId>
     </dependency>
   </dependencies>
 </project>
