@@ -34,6 +34,30 @@ test("E2E-05 exports downloadable Turtle with subclass axioms", async ({ page })
   await page.getByTestId("create-element").click();
   await expect(page.getByTestId("element-list")).toContainText("线路");
 
+  await page.getByTestId("kind-PROPERTY").click();
+  await page.getByTestId("element-name").locator("input").fill("额定电压");
+  await page.getByTestId("element-api").locator("input").fill("ratedVoltage");
+  await page.getByTestId("element-owner").selectOption({ label: "变压器" });
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("额定电压");
+  await page.getByTestId("element-name").locator("input").fill("长度");
+  await page.getByTestId("element-api").locator("input").fill("lengthKm");
+  await page.getByTestId("element-owner").selectOption({ label: "线路" });
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("长度");
+
+  await page.getByTestId("kind-OBJECT_TYPE").click();
+  await page.getByTestId("element-name").locator("input").fill("组合设备");
+  await page.getByTestId("element-api").locator("input").fill("Combo");
+  await page.getByTestId("element-cq").selectOption({ label: "有哪些设备" });
+  await page.getByTestId("element-parents").selectOption([{ label: "变压器" }, { label: "线路" }]);
+  await page.getByTestId("create-element").click();
+  await expect(page.getByTestId("element-list")).toContainText("组合设备");
+  await page.getByTestId("effective-object").selectOption({ label: "组合设备" });
+  await page.getByTestId("load-effective").click();
+  await expect(page.getByTestId("effective-list")).toContainText("继承自 变压器");
+  await expect(page.getByTestId("effective-list")).toContainText("继承自 线路");
+
   await page.getByTestId("kind-AXIOM").click();
   await page.getByTestId("element-name").locator("input").fill("变压器是资产");
   await page.getByTestId("element-api").locator("input").fill("transformerIsAsset");
@@ -60,6 +84,9 @@ test("E2E-05 exports downloadable Turtle with subclass axioms", async ({ page })
   expect(text.match(/subClassOf/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
   expect(text).toContain("Transformer");
   expect(text).toContain("Line");
+  expect(text).toContain("#Combo");
+  expect(text).toMatch(/subClassOf[\s\S]*#Transformer/);
+  expect(text).toMatch(/subClassOf[\s\S]*#Line/);
   const preview = page.getByTestId("export-preview");
   await expect(preview).toContainText("subClassOf");
   await page.screenshot({ path: "test-results/export-turtle.png", fullPage: true });
