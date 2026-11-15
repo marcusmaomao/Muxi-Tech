@@ -16,6 +16,7 @@ public class ChangeEntity {
     private String op;
     private String beforeJson;
     private String afterJson;
+    private String fieldPaths;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -35,4 +36,6 @@ public class ChangeEntity {
     public void setBeforeJson(String beforeJson) { this.beforeJson = beforeJson; }
     public String getAfterJson() { return afterJson; }
     public void setAfterJson(String afterJson) { this.afterJson = afterJson; }
+    public String getFieldPaths() { return fieldPaths; }
+    public void setFieldPaths(String fieldPaths) { this.fieldPaths = fieldPaths; }
 }

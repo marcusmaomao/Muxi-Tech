@@ -23,6 +23,8 @@ import cn.muxicloud.mop.model.mapper.ElementRefMapper;
 import cn.muxicloud.mop.model.mapper.ProjectMapper;
 import cn.muxicloud.mop.model.mapper.ProjectMemberMapper;
 import cn.muxicloud.mop.model.schema.PayloadSchemaValidator;
+import cn.muxicloud.mop.model.version.FieldChange;
+import cn.muxicloud.mop.model.version.JsonLeaves;
 import cn.muxicloud.mop.security.AuthenticatedUser;
 import cn.muxicloud.mop.tenant.TenantContext;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -32,9 +34,13 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.HexFormat;
 import java.util.List;
@@ -54,6 +60,7 @@ public class ModelService implements BranchCatalog, ElementWriter {
     private final ChangeMapper changeMapper;
     private final PayloadSchemaValidator schemaValidator;
     private final ObjectMapper objectMapper;
+    private final BranchReader reader;
 
     public ModelService(
             ProjectMapper projectMapper,
@@ -64,7 +71,8 @@ public class ModelService implements BranchCatalog, ElementWriter {
             CommitMapper commitMapper,
             ChangeMapper changeMapper,
             PayloadSchemaValidator schemaValidator,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            BranchReader reader) {
         this.projectMapper = projectMapper;
         this.memberMapper = memberMapper;
         this.branchMapper = branchMapper;
@@ -74,6 +82,7 @@ public class ModelService implements BranchCatalog, ElementWriter {
         this.changeMapper = changeMapper;
         this.schemaValidator = schemaValidator;
         this.objectMapper = objectMapper;
+        this.reader = reader;
     }
 
     public List<ProjectEntity> projects() {
@@ -122,7 +131,7 @@ public class ModelService implements BranchCatalog, ElementWriter {
         branch.setProjectId(project.getId());
         branch.setName("main");
         branch.setHeadRev(0L);
-        branch.setProtectedFlag(1);
+        branch.setProtectedFlag(0);
         branch.setStatus("ACTIVE");
         branch.setCreatedBy(actor.userId());
         branch.setCreatedAt(LocalDateTime.now());
@@ -208,30 +217,147 @@ public class ModelService implements BranchCatalog, ElementWriter {
     }
 
     public List<ElementEntity> elements(Long branchId, String type) {
-        LambdaQueryWrapper<ElementEntity> query = new LambdaQueryWrapper<ElementEntity>()
-                .eq(ElementEntity::getBranchId, branchId)
-                .isNull(ElementEntity::getRevEnd)
-                .eq(ElementEntity::getTombstone, 0);
-        if (type != null && !type.isBlank()) {
-            query.eq(ElementEntity::getElementType, type);
+        List<ElementEntity> rows = reader.view(branchId);
+        if (type == null || type.isBlank()) {
+            return rows;
         }
-        return elementMapper.selectList(query);
+        return rows.stream().filter(row -> type.equals(row.getElementType())).toList();
+    }
+
+    public List<CommitEntity> commits(Long branchId) {
+        requiredBranch(branchId);
+        return commitMapper.selectList(new LambdaQueryWrapper<CommitEntity>()
+                .eq(CommitEntity::getBranchId, branchId)
+                .orderByDesc(CommitEntity::getRev));
+    }
+
+    @Transactional
+    public BranchEntity createBranch(Long projectId, String name, Long parentBranchId, AuthenticatedUser actor) {
+        project(projectId);
+        String clean = name == null ? "" : name.trim();
+        if (!clean.matches("[\\p{IsHan}A-Za-z0-9][\\p{IsHan}A-Za-z0-9_\\-/]{0,127}")) {
+            throw new MopException(ErrorCode.VALIDATION, "分支名需以字母或汉字开头，只能包含字母、数字、汉字、下划线、短横和斜杠", null);
+        }
+        BranchEntity parent = parentBranchId == null
+                ? branchMapper.selectOne(new LambdaQueryWrapper<BranchEntity>()
+                        .eq(BranchEntity::getProjectId, projectId)
+                        .eq(BranchEntity::getName, "main")
+                        .last("LIMIT 1"))
+                : branchMapper.selectById(parentBranchId);
+        if (parent == null || !parent.getProjectId().equals(projectId) || !"ACTIVE".equals(parent.getStatus())) {
+            throw new MopException(ErrorCode.VALIDATION, "父分支不存在", null);
+        }
+        if (branchMapper.selectCount(new LambdaQueryWrapper<BranchEntity>()
+                .eq(BranchEntity::getProjectId, projectId)
+                .eq(BranchEntity::getName, clean)) > 0) {
+            throw new MopException(ErrorCode.VALIDATION, "分支名已存在", null);
+        }
+        BranchEntity branch = new BranchEntity();
+        branch.setTenantId(actor.tenantId());
+        branch.setProjectId(projectId);
+        branch.setName(clean);
+        branch.setParentBranchId(parent.getId());
+        branch.setForkRev(parent.getHeadRev());
+        branch.setHeadRev(parent.getHeadRev());
+        branch.setProtectedFlag(0);
+        branch.setStatus("ACTIVE");
+        branch.setCreatedBy(actor.userId());
+        branch.setCreatedAt(LocalDateTime.now());
+        branchMapper.insert(branch);
+        return branch;
+    }
+
+    @Transactional
+    public BranchEntity protect(Long branchId, boolean enabled) {
+        BranchEntity branch = requiredBranch(branchId);
+        branch.setProtectedFlag(enabled ? 1 : 0);
+        branchMapper.updateById(branch);
+        return branch;
+    }
+
+    @Transactional
+    public void archive(Long branchId) {
+        BranchEntity branch = requiredBranch(branchId);
+        if ("main".equals(branch.getName())) {
+            throw new MopException(ErrorCode.VALIDATION, "不能归档 main", null);
+        }
+        Long children = branchMapper.selectCount(new LambdaQueryWrapper<BranchEntity>()
+                .eq(BranchEntity::getParentBranchId, branchId)
+                .eq(BranchEntity::getStatus, "ACTIVE"));
+        if (children != null && children > 0) {
+            throw new MopException(ErrorCode.VALIDATION, "还有从它拉出的分支，不能归档", null);
+        }
+        branch.setStatus("ARCHIVED");
+        branchMapper.updateById(branch);
+    }
+
+    @Transactional
+    public CommitEntity revertTo(Long branchId, long rev, AuthenticatedUser actor) {
+        BranchEntity branch = requiredBranch(branchId);
+        long head = branch.getHeadRev() == null ? 0L : branch.getHeadRev();
+        if (rev < 0 || rev > head) {
+            throw new MopException(ErrorCode.VALIDATION, "修订号超出该分支", null);
+        }
+        if (rev == head) {
+            throw new MopException(ErrorCode.VALIDATION, "分支已经在这个修订", null);
+        }
+        Map<String, ElementEntity> desired = index(reader.viewAt(branchId, rev));
+        Map<String, ElementEntity> current = index(reader.view(branchId));
+        List<ChangeInput> changes = new ArrayList<>();
+        for (ElementEntity row : current.values()) {
+            if (!desired.containsKey(row.getUid())) {
+                changes.add(new ChangeInput("DELETE", row.getUid(), row.getElementType(), row.getApiName(), null));
+            }
+        }
+        for (ElementEntity row : desired.values()) {
+            ElementEntity live = current.get(row.getUid());
+            JsonNode payload = readJson(row.getPayload());
+            if (live == null) {
+                changes.add(new ChangeInput("ADD", row.getUid(), row.getElementType(), row.getApiName(), payload));
+            } else if (!Objects.equals(live.getContentHash(), row.getContentHash())) {
+                changes.add(new ChangeInput("MODIFY", row.getUid(), row.getElementType(), row.getApiName(), payload));
+            }
+        }
+        if (changes.isEmpty()) {
+            throw new MopException(ErrorCode.VALIDATION, "没有需要回退的变更", null);
+        }
+        return commit(branchId, "回退到修订 " + rev, changes, actor, "REVERT", null, null);
     }
 
     @Transactional
     public CommitEntity commit(Long branchId, String message, List<ChangeInput> changes, AuthenticatedUser actor) {
-        BranchEntity branch = branchMapper.selectById(branchId);
-        if (branch == null || !"main".equals(branch.getName())) {
-            throw new MopException(ErrorCode.VALIDATION, "当前只支持向 main 分支提交", null);
+        return commit(branchId, message, changes, actor, "MANUAL", null, null);
+    }
+
+    @Transactional
+    public CommitEntity commit(
+            Long branchId, String message, List<ChangeInput> changes, AuthenticatedUser actor, String source,
+            Long mergeSourceBranchId, Long mergeSourceRev) {
+        BranchEntity branch = requiredBranch(branchId);
+        if (branch.getStatus() != null && !"ACTIVE".equals(branch.getStatus())) {
+            throw new MopException(ErrorCode.VALIDATION, "分支已归档", null);
+        }
+        boolean governed = "MERGE".equals(source) || "REVERT".equals(source);
+        if (branch.getProtectedFlag() != null && branch.getProtectedFlag() == 1 && !governed) {
+            throw new MopException(ErrorCode.VALIDATION, "受保护分支不能直接提交，请通过合并写入", null);
+        }
+        if (changes == null) {
+            changes = List.of();
         }
         projectMapper.selectOne(new LambdaQueryWrapper<ProjectEntity>()
                 .eq(ProjectEntity::getId, branch.getProjectId())
                 .last("FOR UPDATE"));
         ProjectEntity project = projectMapper.selectById(branch.getProjectId());
         long rev = project.getHeadRev() + 1;
-        List<String> applied = new ArrayList<>();
-        for (ChangeInput change : changes) {
-            applied.add(apply(project, branch, rev, change));
+        long parentRev = branch.getHeadRev() == null ? 0L : branch.getHeadRev();
+        List<Applied> applied = new ArrayList<>();
+        reader.reading(rev);
+        try {
+            for (ChangeInput change : changes) {
+                applied.add(apply(project, branch, rev, change));
+            }
+        } finally {
+            reader.clearReading();
         }
         project.setHeadRev(rev);
         projectMapper.updateById(project);
@@ -242,21 +368,27 @@ public class ModelService implements BranchCatalog, ElementWriter {
         commit.setProjectId(project.getId());
         commit.setBranchId(branch.getId());
         commit.setRev(rev);
+        commit.setParentRev(parentRev);
+        commit.setMergeSourceBranchId(mergeSourceBranchId);
+        commit.setMergeSourceRev(mergeSourceRev);
         commit.setMessage(message);
+        commit.setSource(source == null ? "MANUAL" : source);
         commit.setChangeCount(changes.size());
         commit.setAuthorId(actor.userId());
         commit.setCreatedAt(LocalDateTime.now());
         commitMapper.insert(commit);
         for (int i = 0; i < changes.size(); i++) {
-            ChangeInput change = changes.get(i);
+            Applied change = applied.get(i);
             ChangeEntity row = new ChangeEntity();
             row.setTenantId(actor.tenantId());
             row.setProjectId(project.getId());
             row.setCommitId(commit.getId());
-            row.setUid(applied.get(i));
+            row.setUid(change.uid());
             row.setElementType(change.type());
             row.setOp(change.op());
-            row.setAfterJson(change.payload() == null ? null : change.payload().toString());
+            row.setBeforeJson(change.before());
+            row.setAfterJson(change.after());
+            row.setFieldPaths(change.fields());
             changeMapper.insert(row);
         }
         return commit;
@@ -298,47 +430,62 @@ public class ModelService implements BranchCatalog, ElementWriter {
         return current(branchId, change.getUid());
     }
 
-    private String apply(ProjectEntity project, BranchEntity branch, long rev, ChangeInput change) {
+    private Applied apply(ProjectEntity project, BranchEntity branch, long rev, ChangeInput change) {
         String op = change.op();
         if ("DELETE".equals(op)) {
             guardReferences(branch.getId(), change.uid());
-            ElementEntity current = current(branch.getId(), change.uid());
-            if (current == null || current.getTombstone() == 1) {
+            ElementEntity visible = reader.find(branch.getId(), change.uid());
+            if (visible == null) {
                 throw new MopException(ErrorCode.VALIDATION, "要删除的元素不存在", null);
             }
-            close(current, rev);
-            closeRefs(branch.getId(), current.getUid(), rev);
-            insertRow(project, branch, rev, current.getUid(), current.getElementType(), current.getApiName(), current.getOwnerUid(), current.getPayload(), 1);
-            return current.getUid();
+            ElementEntity local = localCurrent(branch.getId(), visible.getUid());
+            if (local != null && (local.getTombstone() == null || local.getTombstone() == 0)) {
+                close(local, rev);
+                closeRefs(branch.getId(), local.getUid(), rev);
+            }
+            insertRow(project, branch, rev, visible.getUid(), visible.getElementType(), visible.getApiName(), visible.getOwnerUid(), visible.getPayload(), 1);
+            return new Applied(visible.getUid(), visible.getElementType(), op, visible.getPayload(), null, fields(visible.getPayload(), null));
         }
         schemaValidator.validate(change.type(), change.payload());
         enforcePayload(project, branch, change);
         String payload = change.payload().toString();
         String uid = change.uid() == null || change.uid().isBlank() ? Ulids.newUlid() : change.uid();
         String owner = text(change.payload(), "ownerUid");
+        String before = null;
         if ("MODIFY".equals(op)) {
-            ElementEntity current = current(branch.getId(), uid);
-            if (current == null || current.getTombstone() == 1) {
+            ElementEntity visible = reader.find(branch.getId(), uid);
+            if (visible == null) {
                 throw new MopException(ErrorCode.VALIDATION, "要修改的元素不存在", null);
             }
-            if (ElementRules.apiNameChanged(current.getApiName(), change.apiName())) {
+            if (ElementRules.apiNameChanged(visible.getApiName(), change.apiName())) {
                 throw new MopException(ErrorCode.VALIDATION, "API 名创建后不能修改", null);
             }
-            close(current, rev);
-            closeRefs(branch.getId(), uid, rev);
+            before = visible.getPayload();
+            ElementEntity local = localCurrent(branch.getId(), uid);
+            if (local != null) {
+                close(local, rev);
+                if (local.getTombstone() == null || local.getTombstone() == 0) {
+                    closeRefs(branch.getId(), uid, rev);
+                }
+            }
+        } else {
+            ElementEntity local = localCurrent(branch.getId(), uid);
+            if (local != null && (local.getTombstone() == null || local.getTombstone() == 0)) {
+                throw new MopException(ErrorCode.VALIDATION, "元素已存在", null);
+            }
+            if (local != null) {
+                close(local, rev);
+            }
         }
+        requireNoCycle(branch.getId(), uid, change.payload().get("parentUids"));
         uniqueApi(branch.getId(), change.type(), change.apiName(), uid, owner);
         insertRow(project, branch, rev, uid, change.type(), change.apiName(), owner, payload, 0);
         insertRefs(project, branch, rev, uid, change.payload());
-        return uid;
+        return new Applied(uid, change.type(), op, before, payload, fields(before, payload));
     }
 
     private void guardReferences(Long branchId, String uid) {
-        List<ElementRefEntity> refs = elementRefMapper.selectList(new LambdaQueryWrapper<ElementRefEntity>()
-                .eq(ElementRefEntity::getBranchId, branchId)
-                .eq(ElementRefEntity::getToUid, uid)
-                .isNull(ElementRefEntity::getRevEnd)
-                .ne(ElementRefEntity::getFromUid, uid));
+        List<ElementRefEntity> refs = reader.refsTo(branchId, uid);
         if (!refs.isEmpty()) {
             throw new MopException(ErrorCode.REFERENCED, ErrorCode.REFERENCED.defaultMessage(),
                     java.util.Map.of("references", refs.stream().map(ref -> ref.getFromUid() + ":" + ref.getRefType()).toList()));
@@ -346,11 +493,85 @@ public class ModelService implements BranchCatalog, ElementWriter {
     }
 
     private ElementEntity current(Long branchId, String uid) {
+        return reader.find(branchId, uid);
+    }
+
+    private ElementEntity localCurrent(Long branchId, String uid) {
         return elementMapper.selectOne(new LambdaQueryWrapper<ElementEntity>()
                 .eq(ElementEntity::getBranchId, branchId)
                 .eq(ElementEntity::getUid, uid)
                 .isNull(ElementEntity::getRevEnd)
                 .last("LIMIT 1"));
+    }
+
+    private BranchEntity requiredBranch(Long branchId) {
+        BranchEntity branch = branchMapper.selectById(branchId);
+        if (branch == null) {
+            throw new MopException(ErrorCode.NOT_FOUND);
+        }
+        return branch;
+    }
+
+    private void requireNoCycle(Long branchId, String uid, JsonNode parentUids) {
+        if (uid == null || parentUids == null || !parentUids.isArray()) {
+            return;
+        }
+        ArrayDeque<String> stack = new ArrayDeque<>();
+        for (JsonNode parent : parentUids) {
+            if (parent.isTextual()) {
+                stack.push(parent.asText());
+            }
+        }
+        Set<String> seen = new HashSet<>();
+        while (!stack.isEmpty()) {
+            String next = stack.pop();
+            if (uid.equals(next)) {
+                throw new MopException(ErrorCode.INHERITANCE_CYCLE);
+            }
+            if (!seen.add(next)) {
+                continue;
+            }
+            ElementEntity parent = reader.find(branchId, next);
+            if (parent == null) {
+                continue;
+            }
+            JsonNode payload = readJson(parent.getPayload());
+            JsonNode grandparents = payload == null ? null : payload.get("parentUids");
+            if (grandparents != null && grandparents.isArray()) {
+                for (JsonNode item : grandparents) {
+                    if (item.isTextual()) {
+                        stack.push(item.asText());
+                    }
+                }
+            }
+        }
+    }
+
+    private String fields(String before, String after) {
+        List<FieldChange> changes = JsonLeaves.diff(readJson(before), readJson(after));
+        if (changes.isEmpty()) {
+            return null;
+        }
+        return objectMapper.valueToTree(changes).toString();
+    }
+
+    private JsonNode readJson(String payload) {
+        if (payload == null || payload.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(payload);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private static Map<String, ElementEntity> index(List<ElementEntity> rows) {
+        Map<String, ElementEntity> out = new LinkedHashMap<>();
+        for (ElementEntity row : rows) {
+            out.put(row.getUid(), row);
+        }
+        return out;
     }
 
     private void close(ElementEntity current, long rev) {
@@ -471,19 +692,14 @@ public class ModelService implements BranchCatalog, ElementWriter {
         if (apiName == null || apiName.isBlank()) {
             return;
         }
-        LambdaQueryWrapper<ElementEntity> query = new LambdaQueryWrapper<ElementEntity>()
-                .eq(ElementEntity::getBranchId, branchId)
-                .eq(ElementEntity::getElementType, type)
-                .eq(ElementEntity::getApiName, apiName)
-                .isNull(ElementEntity::getRevEnd)
-                .eq(ElementEntity::getTombstone, 0);
-        if ("PROPERTY".equals(type) || "ENUM_VALUE".equals(type)) {
-            query.eq(ElementEntity::getOwnerUid, ownerUid);
-        }
-        for (ElementEntity row : elementMapper.selectList(query)) {
-            if (!row.getUid().equals(uid)) {
-                throw new MopException(ErrorCode.VALIDATION, "API 名已存在", null);
+        for (ElementEntity row : reader.view(branchId)) {
+            if (!type.equals(row.getElementType()) || !apiName.equals(row.getApiName()) || row.getUid().equals(uid)) {
+                continue;
             }
+            if (("PROPERTY".equals(type) || "ENUM_VALUE".equals(type)) && !Objects.equals(ownerUid, row.getOwnerUid())) {
+                continue;
+            }
+            throw new MopException(ErrorCode.VALIDATION, "API 名已存在", null);
         }
     }
 
@@ -600,4 +816,6 @@ public class ModelService implements BranchCatalog, ElementWriter {
     public record ChangeInput(String op, String uid, String type, String apiName, JsonNode payload) {}
 
     public record MemberInput(Long userId, String role) {}
+
+    private record Applied(String uid, String type, String op, String before, String after, String fields) {}
 }
