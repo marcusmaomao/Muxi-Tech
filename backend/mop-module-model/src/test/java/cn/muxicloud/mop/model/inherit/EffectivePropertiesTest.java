@@ -2,11 +2,12 @@ package cn.muxicloud.mop.model.inherit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.NameConflict;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.PropNode;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.PropertyView;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.Report;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.TypeNode;
+import cn.muxicloud.mop.model.api.EffectiveProperties;
+import cn.muxicloud.mop.model.api.EffectiveProperties.NameConflict;
+import cn.muxicloud.mop.model.api.EffectiveProperties.PropNode;
+import cn.muxicloud.mop.model.api.EffectiveProperties.PropertyView;
+import cn.muxicloud.mop.model.api.EffectiveProperties.Report;
+import cn.muxicloud.mop.model.api.EffectiveProperties.TypeNode;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

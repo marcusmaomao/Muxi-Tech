@@ -3,7 +3,7 @@ package cn.muxicloud.mop.model.controller;
 import cn.muxicloud.mop.model.entity.ElementEntity;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
-import cn.muxicloud.mop.model.inherit.EffectiveProperties.Report;
+import cn.muxicloud.mop.model.api.EffectiveProperties.Report;
 import cn.muxicloud.mop.model.service.ModelService;
 import cn.muxicloud.mop.security.AuthenticatedUser;
 import cn.muxicloud.mop.security.RequiresPermission;
