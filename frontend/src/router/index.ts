@@ -13,6 +13,8 @@ import ModelingView from "@/views/model/ModelingView.vue";
 import ModelsView from "@/views/ai/ModelsView.vue";
 import AiModelingView from "@/views/ai/AiModelingView.vue";
 import SyncView from "@/views/runtime/SyncView.vue";
+import GraphView from "@/views/runtime/GraphView.vue";
+import ExtractionView from "@/views/ai/ExtractionView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -31,6 +33,8 @@ const router = createRouter({
         { path: "ai/models", name: "models", component: ModelsView },
         { path: "ai/modeling", name: "ai-modeling", component: AiModelingView },
         { path: "runtime/sync", name: "sync", component: SyncView },
+        { path: "runtime/graph", name: "graph", component: GraphView },
+        { path: "ai/extraction", name: "extraction", component: ExtractionView },
         { path: "system/users", name: "users", component: UsersView },
         { path: "system/roles", component: SimpleListView, props: { kind: "roles" } },
         { path: "system/menus", component: SimpleListView, props: { kind: "menus" } },

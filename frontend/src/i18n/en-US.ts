@@ -21,6 +21,8 @@ export default {
     files: "Files",
     models: "Models",
     aiModeling: "AI modeling",
+    extraction: "Extraction",
+    graph: "Graph",
     system: "System",
     soon: "Soon",
   },

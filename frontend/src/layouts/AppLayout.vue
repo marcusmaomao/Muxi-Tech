@@ -35,6 +35,8 @@ async function onLogout() {
         <router-link v-if="auth.can('basic:file:list')" to="/basic/files">{{ t("nav.files") }}</router-link>
         <router-link v-if="auth.can('ai:model:list')" to="/ai/models">{{ t("nav.models") }}</router-link>
         <router-link v-if="auth.can('ai:model:edit')" to="/ai/modeling">{{ t("nav.aiModeling") }}</router-link>
+        <router-link v-if="auth.can('ai:model:edit')" to="/ai/extraction">{{ t("nav.extraction") }}</router-link>
+        <router-link v-if="auth.can('runtime:sync')" to="/runtime/graph">{{ t("nav.graph") }}</router-link>
         <router-link v-if="auth.can('system:user:list')" to="/system/users">{{ t("nav.system") }}</router-link>
       </nav>
     </aside>

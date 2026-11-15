@@ -21,6 +21,8 @@ export default {
     files: "文件",
     models: "模型",
     aiModeling: "AI 建模",
+    extraction: "抽取",
+    graph: "图谱",
     system: "系统",
     users: "用户",
     roles: "角色",
