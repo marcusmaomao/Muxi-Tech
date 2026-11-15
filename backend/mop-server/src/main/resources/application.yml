@@ -24,6 +24,10 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
   jackson:
     default-property-inclusion: non_null
     serialization:
@@ -48,6 +52,9 @@ mop:
     expose: ${MOP_CAPTCHA_EXPOSE:false}
   datasource:
     secret: ${MOP_DATASOURCE_SECRET:}
+  ai:
+    key-secret: ${MOP_AI_KEY_SECRET:${MOP_DATASOURCE_SECRET:}}
+    rate-limit: ${MOP_AI_RATE_LIMIT:memory}
   storage:
     endpoint: ${MOP_STORAGE_ENDPOINT:}
     access-key: ${MOP_STORAGE_ACCESS_KEY:}

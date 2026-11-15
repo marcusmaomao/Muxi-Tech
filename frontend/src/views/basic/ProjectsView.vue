@@ -15,7 +15,7 @@ interface ProjectRow {
 const rows = ref<ProjectRow[]>([]);
 const code = ref("");
 const name = ref("");
-const namespace = ref("https://muxi.example/ont/");
+const namespace = ref("");
 const domain = ref("");
 const scopeInclude = ref("");
 const scopeExclude = ref("");
@@ -60,12 +60,12 @@ onMounted(() => {
   <main class="page" data-testid="projects-page">
     <BasicNav />
     <h1>项目</h1>
-    <p class="lead">一个项目是一块本体范围。命名空间要用绝对 URI，并以 # 或 / 结尾。</p>
+    <p class="lead">每个项目单独配置命名空间，IRI 用这个命名空间加上 API 名。域名仍是占位，等所有者确定后再改到正式域名。</p>
     <form class="form-grid" @submit.prevent="createProject">
       <span data-testid="project-code"><el-input v-model="code" placeholder="编码" /></span>
       <span data-testid="project-name"><el-input v-model="name" placeholder="名称" /></span>
       <span data-testid="project-domain"><el-input v-model="domain" placeholder="领域" /></span>
-      <span data-testid="project-namespace" class="wide"><el-input v-model="namespace" placeholder="命名空间" /></span>
+      <span data-testid="project-namespace" class="wide"><el-input v-model="namespace" placeholder="https://example.com/ont/#" /></span>
       <span data-testid="project-include"><el-input v-model="scopeInclude" placeholder="范围包含" /></span>
       <span data-testid="project-exclude"><el-input v-model="scopeExclude" placeholder="范围排除" /></span>
       <el-button native-type="submit" type="primary" data-testid="create-project">新建</el-button>

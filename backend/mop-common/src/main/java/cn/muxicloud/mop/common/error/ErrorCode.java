@@ -13,6 +13,7 @@ public enum ErrorCode {
     REFERENCED("MOP-2005", "元素仍被引用，不能删除", 409),
     CQ_REQUIRED("MOP-2006", "对象或关系必须关联至少一个能力问题", 400),
     FILE_TOO_LARGE("MOP-3002", "文件超过 50MB", 400),
+    RATE_LIMITED("MOP-3003", "调用过于频繁", 429),
     VALIDATION("MOP-4000", "请求参数不合法", 400),
     NOT_FOUND("MOP-4004", "资源不存在", 404),
     INTERNAL("MOP-5000", "系统内部错误", 500);

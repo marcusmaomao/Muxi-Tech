@@ -18,6 +18,7 @@ export default {
     projects: "Projects",
     datasources: "Datasources",
     files: "Files",
+    models: "Models",
     system: "System",
     soon: "Soon",
   },
