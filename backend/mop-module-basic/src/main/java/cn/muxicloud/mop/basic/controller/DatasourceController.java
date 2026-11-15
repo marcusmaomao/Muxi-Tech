@@ -69,6 +69,12 @@ public class DatasourceController {
         return ApiResponse.ok(datasourceService.columns(id, table));
     }
 
+    @GetMapping("/{id}/tables/{table}/foreign-keys")
+    @RequiresPermission("basic:datasource:list")
+    public ApiResponse<List<cn.muxicloud.mop.basic.api.SourceReader.ForeignKey>> foreignKeys(@PathVariable Long id, @PathVariable String table) {
+        return ApiResponse.ok(datasourceService.foreignKeys(id, table));
+    }
+
     private static AuthenticatedUser user(Authentication authentication) {
         return (AuthenticatedUser) authentication.getPrincipal();
     }

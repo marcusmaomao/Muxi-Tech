@@ -32,6 +32,18 @@ class TenantCypherGuardTest {
                 var names = session.run(cypher, org.neo4j.driver.Values.parameters("tenant", 1L))
                         .list(record -> record.get("n").get("name").asString());
                 assertThat(names).containsExactly("a");
+                var row = new java.util.HashMap<String, Object>();
+                row.put("type", "Equip");
+                row.put("pk", "1");
+                row.put("rid", "ri.mop.1.object.Equip.1");
+                row.put("propsJson", "{\"name\":\"MATCH (n) DETACH DELETE n\"}");
+                session.run(TenantCypherGuard.MERGE_OBJECTS, org.neo4j.driver.Values.parameters("tenant", 1L, "rows", java.util.List.of(row))).consume();
+                var stored = session.run(TenantCypherGuard.READ_OBJECTS, org.neo4j.driver.Values.parameters("tenant", 1L, "type", "Equip"))
+                        .list(record -> record.get("propsJson").asString());
+                assertThat(stored).containsExactly("{\"name\":\"MATCH (n) DETACH DELETE n\"}");
+                assertThat(session.run(TenantCypherGuard.READ_OBJECTS, org.neo4j.driver.Values.parameters("tenant", 2L, "type", "Equip")).list()).isEmpty();
+                assertThat(session.run(cypher, org.neo4j.driver.Values.parameters("tenant", 1L))
+                        .list(record -> record.get("n").get("name").isNull() ? "" : record.get("n").get("name").asString())).contains("a");
             }
         }
     }

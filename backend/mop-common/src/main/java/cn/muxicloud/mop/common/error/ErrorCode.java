@@ -12,6 +12,7 @@ public enum ErrorCode {
     SCHEMA_INVALID("MOP-2001", "JSON Schema 校验失败", 400),
     REFERENCED("MOP-2005", "元素仍被引用，不能删除", 409),
     CQ_REQUIRED("MOP-2006", "对象或关系必须关联至少一个能力问题", 400),
+    SYNC_FAILED("MOP-3001", "同步失败", 500),
     FILE_TOO_LARGE("MOP-3002", "文件超过 50MB", 400),
     RATE_LIMITED("MOP-3003", "调用过于频繁", 429),
     VALIDATION("MOP-4000", "请求参数不合法", 400),

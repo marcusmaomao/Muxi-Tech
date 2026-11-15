@@ -27,6 +27,12 @@ public final class SqlIdentifiers {
         }
     }
 
+    public static void column(String column) {
+        if (column == null || !column.matches("[A-Za-z0-9_]{1,128}")) {
+            throw new MopException(ErrorCode.VALIDATION, "字段名不合法", null);
+        }
+    }
+
     public static void port(int port) {
         if (port < 1 || port > 65535) {
             throw new MopException(ErrorCode.VALIDATION, "端口必须在 1 到 65535 之间", null);

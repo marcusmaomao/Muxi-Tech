@@ -1,8 +1,10 @@
 package cn.muxicloud.mop.basic.service;
 
+import cn.muxicloud.mop.basic.api.SourceReader;
 import cn.muxicloud.mop.basic.config.DatasourceSecretProperties;
 import cn.muxicloud.mop.basic.crypto.SecretCipher;
 import cn.muxicloud.mop.basic.datasource.JdbcProbe;
+import cn.muxicloud.mop.basic.datasource.SourceQuery;
 import cn.muxicloud.mop.basic.datasource.SqlDialect;
 import cn.muxicloud.mop.basic.datasource.SqlIdentifiers;
 import cn.muxicloud.mop.basic.entity.DatasourceEntity;
@@ -14,14 +16,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class DatasourceService {
+public class DatasourceService implements SourceReader {
     private final DatasourceMapper datasourceMapper;
     private final List<SqlDialect> dialects;
     private final DatasourceSecretProperties secrets;
@@ -113,6 +119,120 @@ public class DatasourceService {
         } catch (Exception ex) {
             throw new MopException(ErrorCode.VALIDATION, "无法读取字段：" + JdbcProbe.shorten(ex.getMessage()), null);
         }
+    }
+
+    @Override
+    public void check(String table, List<String> columns) {
+        SqlIdentifiers.table(table);
+        if (columns != null) {
+            columns.forEach(SqlIdentifiers::column);
+        }
+    }
+
+    @Override
+    public List<ForeignKey> foreignKeys(long datasourceId, String table) {
+        SqlIdentifiers.table(table);
+        DatasourceEntity entity = required(datasourceId);
+        SqlDialect dialect = dialect(entity.getDbType());
+        try (Connection connection = open(entity, dialect)) {
+            List<ForeignKey> keys = new ArrayList<>();
+            LinkedHashSet<String> seen = new LinkedHashSet<>();
+            try (ResultSet rows = connection.getMetaData().getImportedKeys(dialect.catalog(entity.getDatabaseName()), dialect.schema(entity.getDatabaseName()), table)) {
+                while (rows.next()) {
+                    String column = rows.getString("FKCOLUMN_NAME");
+                    String targetTable = rows.getString("PKTABLE_NAME");
+                    String targetColumn = rows.getString("PKCOLUMN_NAME");
+                    String marker = column + "->" + targetTable + "." + targetColumn;
+                    if (seen.add(marker)) {
+                        keys.add(new ForeignKey(column, targetTable, targetColumn));
+                    }
+                }
+            }
+            return keys;
+        } catch (MopException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "无法读取外键：" + JdbcProbe.shorten(ex.getMessage()), null);
+        }
+    }
+
+    @Override
+    public List<Map<String, String>> read(Read request) {
+        DatasourceEntity entity = required(request.datasourceId());
+        SqlDialect dialect = mysql(entity);
+        boolean filtered = request.watermark() != null && !request.watermark().isBlank();
+        String sql = SourceQuery.select(request.table(), request.columns(), request.orderColumn(), request.watermarkColumn(), filtered);
+        int limit = Math.min(Math.max(request.limit(), 1), 500);
+        try (Connection connection = open(entity, dialect); PreparedStatement statement = connection.prepareStatement(sql)) {
+            int index = 1;
+            if (filtered) {
+                statement.setString(index++, request.watermark());
+            }
+            statement.setInt(index, limit);
+            statement.setFetchSize(limit);
+            try (ResultSet rows = statement.executeQuery()) {
+                List<Map<String, String>> page = new ArrayList<>();
+                int width = rows.getMetaData().getColumnCount();
+                while (rows.next()) {
+                    Map<String, String> row = new LinkedHashMap<>();
+                    for (int column = 1; column <= width; column++) {
+                        row.put(rows.getMetaData().getColumnLabel(column), rows.getString(column));
+                    }
+                    page.add(row);
+                }
+                return page;
+            }
+        } catch (MopException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "无法读取数据：" + JdbcProbe.shorten(ex.getMessage()), null);
+        }
+    }
+
+    @Override
+    public String max(long datasourceId, String table, String column) {
+        DatasourceEntity entity = required(datasourceId);
+        SqlDialect dialect = mysql(entity);
+        String sql = SourceQuery.max(table, column);
+        try (Connection connection = open(entity, dialect); PreparedStatement statement = connection.prepareStatement(sql); ResultSet rows = statement.executeQuery()) {
+            return rows.next() ? rows.getString(1) : null;
+        } catch (MopException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "无法读取水位：" + JdbcProbe.shorten(ex.getMessage()), null);
+        }
+    }
+
+    @Override
+    public List<String> junctionTargets(long datasourceId, String table, String sourceColumn, String targetColumn, String sourcePk) {
+        DatasourceEntity entity = required(datasourceId);
+        SqlDialect dialect = mysql(entity);
+        String sql = SourceQuery.junction(table, sourceColumn, targetColumn);
+        try (Connection connection = open(entity, dialect); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, sourcePk);
+            try (ResultSet rows = statement.executeQuery()) {
+                List<String> targets = new ArrayList<>();
+                while (rows.next()) {
+                    String target = rows.getString(1);
+                    if (target != null && !target.isBlank()) {
+                        targets.add(target);
+                    }
+                }
+                return targets;
+            }
+        } catch (MopException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new MopException(ErrorCode.VALIDATION, "无法读取中间表：" + JdbcProbe.shorten(ex.getMessage()), null);
+        }
+    }
+
+    private SqlDialect mysql(DatasourceEntity entity) {
+        SqlDialect dialect = dialect(entity.getDbType());
+        if (!"MYSQL".equals(dialect.code())) {
+            throw new MopException(ErrorCode.VALIDATION, "基线同步目前只支持 MySQL", null);
+        }
+        return dialect;
     }
 
     private Connection open(DatasourceEntity entity, SqlDialect dialect) throws Exception {
